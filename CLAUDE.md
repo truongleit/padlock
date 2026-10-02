@@ -1,6 +1,6 @@
 # Padlock
 
-Early-stage Turborepo monorepo. Currently one app (`apps/web`, a Vite + React 19 SPA) that renders a placeholder heading. No backend, database, auth, tests, CI, Docker, or deployment config exists yet. Don't assume any of them; add them deliberately.
+Early-stage Turborepo monorepo. Two apps: `apps/web` (Vite + React 19 SPA, placeholder heading) and `apps/server` (NestJS 12, one hello route). No database, auth, tests, CI, Docker, or deployment config exists yet. Don't assume any of them; add them deliberately.
 
 @AGENTS.md
 
@@ -8,7 +8,7 @@ Early-stage Turborepo monorepo. Currently one app (`apps/web`, a Vite + React 19
 
 - Node 25.7.0, pnpm 12.8.1 (pinned in `.tool-versions` and `packageManager`). Use pnpm only.
 - Turborepo `^2.11` (see AGENTS.md: read the installed package's bundled docs before changing `turbo.json` or turbo commands).
-- TypeScript 7, Vite 8, React 19, Biome 2 (lint + format + import sorting).
+- TypeScript 7 (except `apps/server`, which pins TS `~6.0` because Nest doesn't support TS 7 yet; bump when it does), Vite 8, React 19, Biome 2 (lint + format + import sorting).
 - `pnpm-workspace.yaml` includes only `apps/*`. Add `packages/*` there when creating shared packages. Biome's `files.includes` in `biome.json` already covers `packages/**/src`.
 - `pnpm-workspace.yaml` has `minimumReleaseAgeExclude` entries for pinned `turbo` and `vite` versions. Update them when bumping those.
 
@@ -16,7 +16,7 @@ Early-stage Turborepo monorepo. Currently one app (`apps/web`, a Vite + React 19
 
 | Command | Purpose |
 | --- | --- |
-| `pnpm dev` / `pnpm dev:web` | Start dev server(s) via turbo |
+| `pnpm dev` / `pnpm dev:web` / `pnpm dev:server` | Start dev server(s) via turbo |
 | `pnpm build` | `turbo run build` (web: `tsc && vite build`, output `dist/`) |
 | `pnpm typecheck` | `turbo run typecheck` (`tsc` per workspace, `noEmit`) |
 | `pnpm lint` | `biome check .` (read-only) |
@@ -27,6 +27,7 @@ There is no test runner configured. If you add one, add a turbo `test` task and 
 ## Layout
 
 - `apps/web/`: Vite React app. Entry `src/main.tsx` (StrictMode, throws if `#root` is missing), root component `src/App.tsx`.
+- `apps/server/`: NestJS app (ESM, `NodeNext`, decorators + `emitDecoratorMetadata`). Entry `src/main.ts` (PORT env, default 3000). Relative imports need `.js` suffix. Biome `useImportType` is off there, since DI constructor types must be value imports. Built with `nest build` to `dist/`.
 - `tsconfig.base.json`: shared strict config. Workspaces extend it (see `apps/web/tsconfig.json`).
 - `turbo.json`: tasks `build` (depends on `^build`, outputs `dist/**`), `typecheck` (depends on `^typecheck`), `dev` (persistent, uncached).
 
@@ -44,6 +45,10 @@ There is no test runner configured. If you add one, add a turbo `test` task and 
 - Conventional Commits enforced by commitlint (`commit-msg` hook), e.g. `feat: add vault list`.
 - Husky `pre-commit` runs lint-staged: `biome check --write` on staged js/ts/json/css/html files. Don't bypass hooks with `--no-verify`.
 - Before finishing a change, run `pnpm typecheck && pnpm lint`.
+
+## Updating this file
+
+When the user says "update claude.md", find the latest commit that touched this file (`git log -1 --format=%H -- CLAUDE.md`, or the latest commit whose message mentions updating claude.md). Review everything that changed in the repo since that commit (`git diff <sha>..HEAD`, `git log <sha>..HEAD`), then update CLAUDE.md to reflect only what's new or stale.
 
 ## Agent skills
 
