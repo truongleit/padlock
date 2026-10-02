@@ -27,7 +27,7 @@ There is no test runner configured. If you add one, add a turbo `test` task and 
 ## Layout
 
 - `apps/web/`: Vite React app. Entry `src/main.tsx` (StrictMode, throws if `#root` is missing), root component `src/App.tsx`.
-- `apps/server/`: NestJS app (ESM, `NodeNext`, decorators + `emitDecoratorMetadata`). Entry `src/main.ts` (PORT env, default 3000). Relative imports need `.js` suffix. Biome `useImportType` is off there, since DI constructor types must be value imports. Built with `nest build` to `dist/`.
+- `apps/server/`: NestJS app (ESM, `NodeNext`, decorators + `emitDecoratorMetadata`). Entry `src/main.ts` (PORT env, default 3000). Relative imports need `.js` suffix. Biome `useImportType` is off there, since DI constructor types must be value imports. Built with `nest build` to `dist/`. Swagger UI at `/docs` (JSON at `/docs-json`), set up in `main.ts`; the `@nestjs/swagger` CLI plugin in `nest-cli.json` infers DTO/response schemas, so `@ApiProperty` is rarely needed (only applies to `nest build`/`nest start`, not plain `tsc`/`tsx`). Name DTOs `*.dto.ts` and entities `*.entity.ts`.
 - `tsconfig.base.json`: shared strict config. Workspaces extend it (see `apps/web/tsconfig.json`).
 - `turbo.json`: tasks `build` (depends on `^build`, outputs `dist/**`), `typecheck` (depends on `^typecheck`), `dev` (persistent, uncached).
 
