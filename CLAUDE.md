@@ -1,6 +1,8 @@
 # Padlock
 
-Early-stage Turborepo monorepo. Two apps: `apps/web` (Vite + React 19 SPA, placeholder heading) and `apps/server` (NestJS 12, one hello route). No database, auth, tests, CI, Docker, or deployment config exists yet. Don't assume any of them; add them deliberately.
+Early-stage Turborepo monorepo. Two apps: `apps/web` (Vite + React 19 SPA, placeholder heading) and `apps/server` (NestJS 12, Postgres via Prisma 7, a hello route and an `admins` CRUD module). The only Docker file is `docker-compose.yml` (local Postgres). No auth (the `/admins` endpoints are open), tests, CI, or deployment config exists yet. Don't assume any of them; add them deliberately.
+
+Specs and guides: `docs/padlock_srs.md`, `docs/padlock_database_design.md`, `ADMIN_GUIDE.md` (big picture for the admin feature), `ADMIN_CRUD_GUIDE.md` (step-by-step `admins` CRUD).
 
 @AGENTS.md
 
@@ -25,11 +27,17 @@ Early-stage Turborepo monorepo. Two apps: `apps/web` (Vite + React 19 SPA, place
 
 There is no test runner configured. If you add one, add a turbo `test` task and update this file.
 
+## Local setup
+
+`docker compose up -d db` starts Postgres 17 (user/password/db all `padlock`, port 5432). Copy `apps/server/.env.example` to `apps/server/.env`; `src/config/env.ts` validates it with zod at startup (required: `DATABASE_URL`, `ADMIN_JWT_SECRET` of 32+ chars, `ADMIN_WEB_ORIGIN`; `PORT` defaults to 3000; `SEED_ADMIN_*` are read by `prisma/seed.ts`). Then `pnpm db:migrate` and `pnpm db:seed`.
+
 ## Layout
 
 - `apps/web/`: Vite React app. Entry `src/main.tsx` (StrictMode, throws if `#root` is missing), root component `src/App.tsx`.
 - `apps/server/`: NestJS app (ESM, `moduleResolution: bundler`, decorators + `emitDecoratorMetadata`). Entry `src/main.ts` (PORT env, default 3000). Imports are extensionless; `tsc-alias --resolve-full-paths` adds `.js` and resolves the `@/*` alias (maps to `src/*`) in `dist/` after build and before `dev` starts node, e.g. `@/app.module`. Biome `useImportType` is off there, since DI constructor types must be value imports. Built with `nest build` to `dist/`. Swagger UI at `/docs` (JSON at `/docs-json`), set up in `main.ts`, which also writes the spec to `docs/swagger.json` on every startup (skipped when `NODE_ENV=production`); the `@nestjs/swagger` CLI plugin in `nest-cli.json` infers DTO/response schemas, so `@ApiProperty` is rarely needed (only applies to `nest build`/`nest start`, not plain `tsc`/`tsx`). Name DTOs `*.dto.ts` and entities `*.entity.ts`.
 - Server errors are centralized in `apps/server/src/common/errors/`. A global `AllExceptionsFilter` (`APP_FILTER`) returns `{ statusCode, code, message, details?, path, timestamp }` and maps Prisma P2002/P2025/P2003 to 409/404/409, so services don't catch Prisma errors. Throw `AppException(status, ErrorCode.X, msg)` for a specific code; plain Nest exceptions get a default code. Validation errors come from `validationExceptionFactory` with per-field `details`. Add `@ApiErrorResponses()` to controllers for Swagger.
+- Server data layer: `prisma/` (`schema.prisma`, `migrations/`, `seed.ts`), `src/prisma/` (`PrismaModule`/`PrismaService`, `@prisma/adapter-pg`), and the generated client in `src/generated/prisma` (gitignored; run `pnpm db:generate`). Feature modules sit beside it, e.g. `src/admins/` (controller, service, `dto/`: `POST/GET /admins`, `GET/PATCH/DELETE /admins/:id`, argon2 password hashes never returned).
+- Tooling files: `apps/server` `postinstall` runs `prisma skills sync`; the dirs it writes (`apps/server/.agents|.claude|.cursor|.devin`) are gitignored. `graphify-out/` is gitignored; `.claude/settings.json` holds graphify PreToolUse hooks. `.vscode/settings.json` makes Biome the formatter and points TS at the server's `typescript`.
 - `tsconfig.base.json`: shared strict config. Workspaces extend it (see `apps/web/tsconfig.json`).
 - `turbo.json`: tasks `build` (depends on `^build`, outputs `dist/**`), `typecheck` (depends on `^typecheck`), `dev` (persistent, uncached).
 
