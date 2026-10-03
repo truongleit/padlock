@@ -13,6 +13,18 @@ enum AccountStatus {
   DISABLED
 }
 
+enum ClientType {
+  WEB
+  EXTENSION
+  ADMIN
+}
+
+enum AuditAction {
+  DISABLE
+  REACTIVATE
+  DELETE
+}
+
 model Admin {
   id           String        @id @default(uuid()) @db.Uuid
   email        String        @unique
@@ -20,6 +32,83 @@ model Admin {
   status       AccountStatus @default(ACTIVE)
   createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamptz
   lastLoginAt  DateTime?     @map("last_login_at") @db.Timestamptz
+  sessions    Session[]
+  resetTokens PasswordResetToken[]
+  auditLogs   AdminAuditLog[]
 
   @@map("admins")
+}
+
+model User {
+  id                      String               @id @default(uuid()) @db.Uuid
+  email                   String               @unique
+  authHash                Bytes                @map("auth_hash")
+  kdfSalt                 Bytes                @map("kdf_salt")
+  kdfParams               Json                 @map("kdf_params")
+  wrappedVaultKeyMaster   Bytes                @map("wrapped_vault_key_master")
+  wrappedVaultKeyRecovery Bytes                @map("wrapped_vault_key_recovery")
+  wrapIvMaster            Bytes                @map("wrap_iv_master")
+  wrapIvRecovery          Bytes                @map("wrap_iv_recovery")
+  status                  AccountStatus        @default(ACTIVE)
+  createdAt               DateTime             @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt               DateTime             @updatedAt @map("updated_at") @db.Timestamptz
+  vaultItems              VaultItem[]
+  sessions                Session[]
+  resetTokens             PasswordResetToken[]
+
+  @@map("users")
+}
+
+model VaultItem {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  ciphertext Bytes
+  iv         Bytes
+  encVersion Int      @default(1) @map("enc_version") @db.SmallInt
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, updatedAt])
+  @@map("vault_items")
+}
+
+model Session {
+  id               String     @id @default(uuid()) @db.Uuid
+  userId           String?    @map("user_id") @db.Uuid
+  adminId          String?    @map("admin_id") @db.Uuid
+  refreshTokenHash Bytes      @unique @map("refresh_token_hash")
+  clientType       ClientType @map("client_type")
+  expiresAt        DateTime   @map("expires_at") @db.Timestamptz
+  revokedAt        DateTime?  @map("revoked_at") @db.Timestamptz
+  createdAt        DateTime   @default(now()) @map("created_at") @db.Timestamptz
+  user             User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  admin            Admin?     @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String?   @map("user_id") @db.Uuid
+  adminId   String?   @map("admin_id") @db.Uuid
+  tokenHash Bytes     @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz
+  usedAt    DateTime? @map("used_at") @db.Timestamptz
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  user      User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  admin     Admin?    @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@map("password_reset_tokens")
+}
+
+model AdminAuditLog {
+  id           String      @id @default(uuid()) @db.Uuid
+  adminId      String      @map("admin_id") @db.Uuid
+  targetUserId String      @map("target_user_id") @db.Uuid // no relation on purpose: the log survives user deletion
+  action       AuditAction
+  createdAt    DateTime    @default(now()) @map("created_at") @db.Timestamptz
+  admin        Admin       @relation(fields: [adminId], references: [id])
+
+  @@map("admin_audit_logs")
 }
