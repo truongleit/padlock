@@ -7,3 +7,8 @@ dist
 .DS_Store
 graphify-out/
 apps/server/src/generated
+# prisma skills synced by postinstall
+apps/server/.agents
+apps/server/.claude
+apps/server/.cursor
+apps/server/.devin
