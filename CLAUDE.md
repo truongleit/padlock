@@ -21,13 +21,15 @@ Early-stage Turborepo monorepo. Two apps: `apps/web` (Vite + React 19 SPA, place
 | `pnpm typecheck` | `turbo run typecheck` (`tsc` per workspace, `noEmit`) |
 | `pnpm lint` | `biome check .` (read-only) |
 | `pnpm format` | `biome check --write .` (fix lint, format, sort imports) |
+| `pnpm db:generate` / `db:migrate` / `db:deploy` / `db:seed` / `db:reset` / `db:studio` | Prisma commands, forwarded to `apps/server` (`prisma` is only installed there, so bare `pnpm prisma ...` fails from root) |
 
 There is no test runner configured. If you add one, add a turbo `test` task and update this file.
 
 ## Layout
 
 - `apps/web/`: Vite React app. Entry `src/main.tsx` (StrictMode, throws if `#root` is missing), root component `src/App.tsx`.
-- `apps/server/`: NestJS app (ESM, `NodeNext`, decorators + `emitDecoratorMetadata`). Entry `src/main.ts` (PORT env, default 3000). Relative imports need `.js` suffix. Biome `useImportType` is off there, since DI constructor types must be value imports. Built with `nest build` to `dist/`. Swagger UI at `/docs` (JSON at `/docs-json`), set up in `main.ts`; the `@nestjs/swagger` CLI plugin in `nest-cli.json` infers DTO/response schemas, so `@ApiProperty` is rarely needed (only applies to `nest build`/`nest start`, not plain `tsc`/`tsx`). Name DTOs `*.dto.ts` and entities `*.entity.ts`.
+- `apps/server/`: NestJS app (ESM, `moduleResolution: bundler`, decorators + `emitDecoratorMetadata`). Entry `src/main.ts` (PORT env, default 3000). Imports are extensionless; `tsc-alias --resolve-full-paths` adds `.js` and resolves the `@/*` alias (maps to `src/*`) in `dist/` after build and before `dev` starts node, e.g. `@/app.module`. Biome `useImportType` is off there, since DI constructor types must be value imports. Built with `nest build` to `dist/`. Swagger UI at `/docs` (JSON at `/docs-json`), set up in `main.ts`, which also writes the spec to `docs/swagger.json` on every startup (skipped when `NODE_ENV=production`); the `@nestjs/swagger` CLI plugin in `nest-cli.json` infers DTO/response schemas, so `@ApiProperty` is rarely needed (only applies to `nest build`/`nest start`, not plain `tsc`/`tsx`). Name DTOs `*.dto.ts` and entities `*.entity.ts`.
+- Server errors are centralized in `apps/server/src/common/errors/`. A global `AllExceptionsFilter` (`APP_FILTER`) returns `{ statusCode, code, message, details?, path, timestamp }` and maps Prisma P2002/P2025/P2003 to 409/404/409, so services don't catch Prisma errors. Throw `AppException(status, ErrorCode.X, msg)` for a specific code; plain Nest exceptions get a default code. Validation errors come from `validationExceptionFactory` with per-field `details`. Add `@ApiErrorResponses()` to controllers for Swagger.
 - `tsconfig.base.json`: shared strict config. Workspaces extend it (see `apps/web/tsconfig.json`).
 - `turbo.json`: tasks `build` (depends on `^build`, outputs `dist/**`), `typecheck` (depends on `^typecheck`), `dev` (persistent, uncached).
 
@@ -202,3 +204,13 @@ rtk init --global       # Add RTK to ~/.claude/CLAUDE.md
 
 Overall average: **60-90% token reduction** on common development operations.
 <!-- /rtk-instructions -->
+
+## graphify
+
+This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
+
+Rules:
+- For codebase questions, first run `graphify query "<question>"` when graphify-out/graph.json exists. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
+- If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
+- Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
+- After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
