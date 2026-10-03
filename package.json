@@ -10,7 +10,13 @@
     "format": "biome check --write .",
     "prepare": "husky",
     "dev:web": "turbo run dev --filter=web",
-    "dev:server": "turbo run dev --filter=server"
+    "dev:server": "turbo run dev --filter=server",
+    "db:generate": "pnpm --filter server db:generate",
+    "db:migrate": "pnpm --filter server db:migrate",
+    "db:deploy": "pnpm --filter server db:deploy",
+    "db:seed": "pnpm --filter server db:seed",
+    "db:reset": "pnpm --filter server db:reset",
+    "db:studio": "pnpm --filter server db:studio"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.15",

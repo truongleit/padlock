@@ -8,7 +8,8 @@
       "packages/**/src/**/*",
       "apps/**/vite.config.*",
       "!**/dist",
-      "!**/build"
+      "!**/build",
+      "!**/generated"
     ]
   },
   "formatter": {
@@ -98,6 +99,9 @@
     }
   },
   "javascript": {
+    "parser": {
+      "unsafeParameterDecoratorsEnabled": true
+    },
     "formatter": {
       "quoteStyle": "double",
       "trailingCommas": "es5",

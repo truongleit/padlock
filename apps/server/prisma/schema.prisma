@@ -1,0 +1,25 @@
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  importFileExtension = ""
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum AccountStatus {
+  ACTIVE
+  DISABLED
+}
+
+model Admin {
+  id           String        @id @default(uuid()) @db.Uuid
+  email        String        @unique
+  passwordHash String        @map("password_hash")
+  status       AccountStatus @default(ACTIVE)
+  createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  lastLoginAt  DateTime?     @map("last_login_at") @db.Timestamptz
+
+  @@map("admins")
+}

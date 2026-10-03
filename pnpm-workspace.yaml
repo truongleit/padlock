@@ -10,4 +10,9 @@ minimumReleaseAgeExclude:
   - turbo@2.11.6
   - vite@8.3.2
 allowBuilds:
+  "@prisma/engines": true
   "@scarf/scarf": false
+  argon2: true
+  esbuild: true
+  prisma: true
+  workerd: true

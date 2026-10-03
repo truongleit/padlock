@@ -2,8 +2,8 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "lib": ["ES2023"],
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
     "jsx": null,
     "types": ["node"],
     "experimentalDecorators": true,
@@ -11,7 +11,8 @@
     "noEmit": false,
     "outDir": "dist",
     "rootDir": "src",
-    "sourceMap": true
+    "sourceMap": true,
+    "paths": { "@/*": ["./src/*"] }
   },
   "include": ["src"]
 }
