@@ -29,7 +29,7 @@ There is no test runner configured. If you add one, add a turbo `test` task and 
 
 ## Local setup
 
-`docker compose up -d db` starts Postgres 17 (user/password/db all `padlock`, port 5432). Copy `apps/server/.env.example` to `apps/server/.env`; `src/config/env.ts` validates it with zod at startup (required: `DATABASE_URL`, `ADMIN_JWT_SECRET` of 32+ chars, `ADMIN_WEB_ORIGIN`; `PORT` defaults to 3000; `SEED_ADMIN_*` are read by `prisma/seed.ts`). Then `pnpm db:migrate` and `pnpm db:seed`.
+`docker compose up -d db` starts Postgres 17 (user/password/db all `padlock`, port 5432). Copy `apps/server/.env.example` to `apps/server/.env`; `src/config/env.ts` validates it with zod at startup (required: `DATABASE_URL`, `ADMIN_JWT_SECRET` of 32+ chars, `ADMIN_WEB_ORIGIN`; `PORT` defaults to 3000; `ADMIN_JWT_EXPIRES_IN` is the access-token lifetime, default `1h`; `SEED_ADMIN_*` are read by `prisma/seed.ts`). Then `pnpm db:migrate` and `pnpm db:seed`.
 
 ## Layout
 

@@ -2,13 +2,13 @@ import { IsEmail, IsString, MaxLength, MinLength } from "class-validator";
 
 import { NormalizeEmail } from "@/common/email.util";
 
-export class CreateAdminDto {
+export class AdminLoginDto {
   @NormalizeEmail()
   @IsEmail()
   email!: string;
 
   @IsString()
-  @MinLength(12)
+  @MinLength(1)
   @MaxLength(128)
   password!: string;
 }

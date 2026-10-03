@@ -3,6 +3,10 @@ import { z } from "zod";
 const schema = z.object({
   DATABASE_URL: z.url(),
   ADMIN_JWT_SECRET: z.string().min(32),
+  ADMIN_JWT_EXPIRES_IN: z
+    .string()
+    .regex(/^\d+(ms|s|m|h|d)$/)
+    .default("1h"),
   ADMIN_WEB_ORIGIN: z.url(),
   PORT: z.coerce.number().default(3000),
   NODE_ENV: z.string().default("development"),

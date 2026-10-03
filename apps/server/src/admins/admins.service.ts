@@ -4,11 +4,11 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import argon2 from "argon2";
 
 import type { CreateAdminDto } from "@/admins/dto/create-admin.dto";
 import type { ListAdminsQueryDto } from "@/admins/dto/list-admins-query.dto";
 import type { UpdateAdminDto } from "@/admins/dto/update-admin.dto";
+import { hashPassword } from "@/common/password.util";
 import { Prisma } from "@/generated/prisma/client";
 import { PrismaService } from "@/prisma/prisma.service";
 
@@ -26,9 +26,7 @@ export class AdminsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(dto: CreateAdminDto) {
-    const passwordHash = await argon2.hash(dto.password, {
-      type: argon2.argon2id,
-    });
+    const passwordHash = await hashPassword(dto.password);
 
     return this.prisma.admin.create({
       data: { email: dto.email, passwordHash },

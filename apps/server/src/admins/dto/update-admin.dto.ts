@@ -1,12 +1,10 @@
-import { Transform } from "class-transformer";
 import { IsEmail, IsEnum, IsOptional } from "class-validator";
 
+import { NormalizeEmail } from "@/common/email.util";
 import { AccountStatus } from "@/generated/prisma/enums";
 
 export class UpdateAdminDto {
-  @Transform(({ value }) =>
-    typeof value === "string" ? value.trim().toLowerCase() : value
-  )
+  @NormalizeEmail()
   @IsEmail()
   @IsOptional()
   email?: string;
