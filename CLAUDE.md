@@ -2,7 +2,7 @@
 
 Early-stage Turborepo monorepo. Two apps: `apps/web` (Vite + React 19 SPA, placeholder heading) and `apps/server` (NestJS 12, Postgres via Prisma 7, a hello route and an `admins` CRUD module). The only Docker file is `docker-compose.yml` (local Postgres). No auth (the `/admins` endpoints are open), tests, CI, or deployment config exists yet. Don't assume any of them; add them deliberately.
 
-Specs and guides: `docs/padlock_srs.md`, `docs/padlock_database_design.md`, `ADMIN_GUIDE.md` (big picture for the admin feature), `ADMIN_CRUD_GUIDE.md` (step-by-step `admins` CRUD).
+Specs and guides: `docs/padlock_srs.md`, `docs/padlock_database_design.md`, `guides/ADMIN_GUIDE.md` (big picture for the admin feature), `guides/ADMIN_CRUD_GUIDE.md` (step-by-step `admins` CRUD), `guides/ADMIN_AUTH_GUIDE.md` (tables + admin login/refresh/logout).
 
 @AGENTS.md
 

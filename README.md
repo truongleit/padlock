@@ -90,7 +90,7 @@ Passwords are stored as argon2 hashes and never returned. These endpoints have n
 
 - `docs/padlock_srs.md`: requirements
 - `docs/padlock_database_design.md`: database design
-- `ADMIN_GUIDE.md` and `ADMIN_CRUD_GUIDE.md`: admin feature walkthroughs
+- `guides/`: admin feature walkthroughs (`ADMIN_GUIDE.md`, `ADMIN_CRUD_GUIDE.md`, `ADMIN_AUTH_GUIDE.md`)
 
 ## Contributing
 

@@ -7,20 +7,39 @@ Scope (SRS FR-12, FR-13, UC-23..28, NFR-SEC-4/5; `docs/padlock_database_design.m
 - List users, disable/reactivate, delete, each audit-logged (FR-13)
 - Admin endpoints never expose vault data or key material (NFR-SEC-5)
 
-The server is currently a hello route plus Swagger. Nothing else exists (no DB, config, validation, auth). Work milestone by milestone, type the code yourself so it sticks, and read the "Why" notes. Repo rules: pnpm only, relative imports end in `.js`, DTOs are `*.dto.ts`, no `any`, async must `await`, Conventional Commits, run `pnpm typecheck && pnpm lint` before each commit.
+### Where the repo is now
 
-**Version caveat:** Prisma changes setup between majors. The code below is the Prisma 7 style (`prisma.config.ts`, `prisma-client` generator, `@prisma/adapter-pg`). After installing, skim the installed Prisma docs; if it is Prisma 6, the datasource `url` stays in `schema.prisma` and the generator is `prisma-client-js`. Fix small type errors yourself; that is part of learning.
+| Milestone | Status |
+| --- | --- |
+| 0 Foundation (config, pipes, helmet, CORS, cookies, docker, `.env.example`) | **Done** |
+| 1 Database (Prisma 7, `PrismaModule`, seed) | **Partly done**: only the `Admin` model + `AccountStatus` enum and one migration (`create_admins`) exist. `User`, `VaultItem`, `Session`, `PasswordResetToken`, `AdminAuditLog` are still to add. |
+| Extra, not in the original plan | **Done**: global error handling (`src/common/errors/`), Swagger JSON export, and an open `admins` CRUD module (`src/admins/`, see `ADMIN_CRUD_GUIDE.md`) |
+| 2 Login/refresh/logout, 3 Guard, 4 User management, 5 Reset, 6 Throttling, 7 Tests | **Not started** |
+
+The `/admins` endpoints are **open** until Milestone 3 protects them. No tests, auth, or CI exist.
+
+Work milestone by milestone, type the code yourself so it sticks, and read the "Why" notes. Repo rules: pnpm only, DTOs are `*.dto.ts` and entities `*.entity.ts`, no `any`, async must `await`, Conventional Commits, run `pnpm typecheck && pnpm lint` before each commit.
+
+**Imports:** extensionless, no `.js`. Use the `@/*` alias (maps to `src/*`) for cross-folder imports, e.g. `@/prisma/prisma.service`, and `./` for siblings. `tsc-alias --resolve-full-paths` rewrites them for `dist/`. Biome orders them: packages, blank line, `@/` aliases, blank line, `./`. `useImportType` is off in `apps/server` because DI constructor parameter types must be value imports.
+
+**Prisma commands:** `prisma` is only installed in `apps/server`, so use the root scripts `pnpm db:generate | db:migrate | db:deploy | db:seed | db:reset | db:studio`. For anything else (e.g. `--create-only`) run `pnpm --filter server exec prisma ...`.
+
+**Errors:** the global `AllExceptionsFilter` returns `{ statusCode, code, message, details?, path, timestamp }` and maps Prisma P2002/P2025/P2003 to 409/404/409, so services don't catch Prisma errors. Plain Nest exceptions (`UnauthorizedException`, `NotFoundException`) get a default code. Throw `new AppException(status, ErrorCode.X, msg)` when you need a specific code (add the code to `error-codes.ts` first). Add `@ApiErrorResponses()` to new controllers. Swagger's CLI plugin infers DTO schemas, so `@ApiProperty` is rarely needed.
+
+**Version note:** the repo is on Prisma 7 (`prisma.config.ts`, `prisma-client` generator, `@prisma/adapter-pg`, generated client in `src/generated/prisma`, gitignored, regenerate with `pnpm db:generate`). The generator sets `importFileExtension = ""` so generated imports match the extensionless setup.
 
 ## Target structure (`apps/server`)
 
 ```
-prisma/schema.prisma  prisma/seed.ts  prisma.config.ts
+prisma/schema.prisma  prisma/seed.ts  prisma.config.ts      (exist)
 src/
-  config/env.ts
-  prisma/{prisma.module,prisma.service}.ts
+  config/env.ts                                              (exists)
+  prisma/{prisma.module,prisma.service}.ts                   (exist)
+  common/errors/*                                            (exists: filter, AppException, ErrorCode, validation)
+  admins/                                                    (exists: open CRUD of admin accounts)
   common/token.util.ts
   mail/{mail.service,console-mail.service,mail.module}.ts
-  admin/
+  admin/                      (new: the admin portal API; not to be confused with admins/)
     admin.module.ts
     auth/{admin-auth.controller,admin-auth.service,admin-jwt.guard,current-admin.decorator}.ts
     auth/dto/{admin-login,forgot-password,reset-password}.dto.ts
@@ -30,7 +49,9 @@ src/
 
 ---
 
-## Milestone 0: Foundation (modules, DI, config, pipes)
+## Milestone 0: Foundation (modules, DI, config, pipes) — DONE
+
+Kept for reference; everything below is already in the repo. Differences from the first draft are noted inline.
 
 ```bash
 # from repo root
@@ -38,7 +59,7 @@ pnpm --filter server add @nestjs/config zod class-validator class-transformer he
 pnpm --filter server add -D @types/cookie-parser
 ```
 
-`docker-compose.yml` (repo root; deliberate new file):
+`docker-compose.yml` (repo root, exists):
 ```yaml
 services:
   db:
@@ -55,6 +76,7 @@ volumes:
 
 `apps/server/.env.example` (copy to `.env`):
 ```
+PORT=3000
 DATABASE_URL=postgresql://padlock:padlock@localhost:5432/padlock
 ADMIN_JWT_SECRET=change-me-to-a-long-random-string-at-least-32-chars
 ADMIN_WEB_ORIGIN=http://localhost:5173
@@ -67,9 +89,9 @@ SEED_ADMIN_PASSWORD=ChangeMe-12345!
 import { z } from "zod";
 
 const schema = z.object({
-  DATABASE_URL: z.string().url(),
+  DATABASE_URL: z.url(),
   ADMIN_JWT_SECRET: z.string().min(32),
-  ADMIN_WEB_ORIGIN: z.string().url(),
+  ADMIN_WEB_ORIGIN: z.url(),
   PORT: z.coerce.number().default(3000),
   NODE_ENV: z.string().default("development"),
 });
@@ -81,25 +103,30 @@ export function validateEnv(config: Record<string, unknown>): Env {
 }
 ```
 
-`src/app.module.ts`:
+`src/app.module.ts` (current; `AdminsModule` is the CRUD module, you will add `AdminModule` for the portal):
 ```ts
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, validate: validateEnv }),
     PrismaModule,
-    AdminModule,
+    AdminsModule, // later: AdminModule
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    { provide: APP_FILTER, useClass: AllExceptionsFilter },
+  ],
 })
 export class AppModule {}
 ```
-(Add the `PrismaModule` and `AdminModule` imports after you create them in the next milestones.)
 
 `src/main.ts`:
 ```ts
 import "reflect-metadata";
 
+import { mkdirSync, writeFileSync } from "node:fs";
+import { dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import { ValidationPipe } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { NestFactory } from "@nestjs/core";
@@ -107,7 +134,8 @@ import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
 
-import { AppModule } from "./app.module.js";
+import { AppModule } from "@/app.module";
+import { validationExceptionFactory } from "@/common/errors/validation";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -124,6 +152,7 @@ async function bootstrap() {
       whitelist: true,
       forbidNonWhitelisted: true,
       transform: true,
+      exceptionFactory: validationExceptionFactory, // 400 with per-field details
     })
   );
   app.enableShutdownHooks();
@@ -133,28 +162,40 @@ async function bootstrap() {
     .setVersion("0.1")
     .addBearerAuth()
     .build();
-  SwaggerModule.setup("docs", app, SwaggerModule.createDocument(app, doc));
+  const document = SwaggerModule.createDocument(app, doc);
+  SwaggerModule.setup("docs", app, document);
+
+  // Dev only: also write the spec to docs/swagger.json on every startup
+  if (config.get<string>("NODE_ENV") !== "production") {
+    const swaggerPath = fileURLToPath(
+      new URL("../../../docs/swagger.json", import.meta.url)
+    );
+    mkdirSync(dirname(swaggerPath), { recursive: true });
+    writeFileSync(swaggerPath, `${JSON.stringify(document, null, 2)}\n`);
+  }
 
   await app.listen(config.get<number>("PORT") ?? 3000);
 }
 
 void bootstrap();
 ```
-Why: `whitelist` strips unknown fields, `forbidNonWhitelisted` rejects them, `transform` turns query strings into numbers. DTOs must be classes so decorators have runtime metadata. If `import cookieParser from "cookie-parser"` fails under `NodeNext`, try `import * as` or check its types.
+Why: `whitelist` strips unknown fields, `forbidNonWhitelisted` rejects them, `transform` turns query strings into numbers. DTOs must be classes so decorators have runtime metadata. The `cookie-parser` default import works with the current `moduleResolution: bundler` setup.
 
-Checkpoint: `docker compose up -d`, `pnpm dev:server` boots; delete a var in `.env` and it crashes with a clear message.
+Checkpoint (passes today): `docker compose up -d db`, `pnpm dev:server` boots; delete a var in `.env` and it crashes with a clear message.
 
 ---
 
-## Milestone 1: Database with Prisma (global modules, lifecycle hooks)
+## Milestone 1: Database with Prisma (global modules, lifecycle hooks) — PARTLY DONE
+
+Done: dependencies, `prisma.config.ts`, `PrismaModule`/`PrismaService` (as below, with `@/` imports), seed, and the `Admin` model with the `create_admins` migration. **Remaining:** add the other models/enums below to `schema.prisma` and migrate.
+
+The current `schema.prisma` is only the `Admin` model (without the `sessions`, `resetTokens`, `auditLogs` relation fields) and `enum AccountStatus`; the generator also has `importFileExtension = ""`. Add the rest incrementally: the vault-related tables first (`User`, `VaultItem`) before Milestone 4, `Session` before Milestone 2, `PasswordResetToken` before Milestone 5, `AdminAuditLog` before Milestone 4. When you add them, add the back-relation fields on `Admin` too.
 
 ```bash
-pnpm --filter server add @prisma/client @prisma/adapter-pg pg dotenv argon2
-pnpm --filter server add -D prisma tsx @types/pg
-cd apps/server && pnpm prisma init   # creates prisma/ and prisma.config.ts; then edit as below
+# already installed: @prisma/client @prisma/adapter-pg pg dotenv argon2 prisma tsx @types/pg
 ```
 
-`apps/server/prisma.config.ts`:
+`apps/server/prisma.config.ts` (exists):
 ```ts
 import "dotenv/config";
 import { defineConfig, env } from "prisma/config";
@@ -166,11 +207,12 @@ export default defineConfig({
 });
 ```
 
-`prisma/schema.prisma` (modeled on the design doc; vault tables included so cascade works):
+Target `prisma/schema.prisma` (modeled on the design doc; vault tables included so cascade works):
 ```prisma
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  importFileExtension = ""
 }
 
 datasource db {
@@ -265,9 +307,9 @@ model AdminAuditLog {
 ```
 (`UserSettings` omitted since admin doesn't need it; add it when you build the user feature.)
 
-Migrate, then add the CHECK constraints Prisma can't express:
+Migrate, then add the CHECK constraints Prisma can't express (a new migration, since `create_admins` is already applied):
 ```bash
-pnpm prisma migrate dev --create-only --name init
+pnpm --filter server exec prisma migrate dev --create-only --name add_auth_and_user_tables
 ```
 Append to the generated `migration.sql`:
 ```sql
@@ -277,17 +319,21 @@ ALTER TABLE password_reset_tokens ADD CONSTRAINT reset_one_owner
   CHECK ((user_id IS NULL) <> (admin_id IS NULL));
 ```
 ```bash
-pnpm prisma migrate dev     # applies it
-pnpm prisma generate
+pnpm db:migrate     # applies it
+pnpm db:generate
 ```
 
 `src/prisma/prisma.service.ts`:
 ```ts
-import { Injectable, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
+import {
+  Injectable,
+  type OnModuleDestroy,
+  type OnModuleInit,
+} from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { PrismaPg } from "@prisma/adapter-pg";
 
-import { PrismaClient } from "../generated/prisma/client.js";
+import { PrismaClient } from "@/generated/prisma/client";
 
 @Injectable()
 export class PrismaService
@@ -315,15 +361,15 @@ export class PrismaService
 ```ts
 import { Global, Module } from "@nestjs/common";
 
-import { PrismaService } from "./prisma.service.js";
+import { PrismaService } from "./prisma.service";
 
 @Global()
 @Module({ providers: [PrismaService], exports: [PrismaService] })
 export class PrismaModule {}
 ```
-Why `@Global()`: every feature needs the DB, so you avoid importing it everywhere. Add `src/generated` to `.gitignore`, and check whether Biome should ignore it (`biome.json` `files.includes`).
+Why `@Global()`: every feature needs the DB, so you avoid importing it everywhere. `src/generated` is already gitignored and outside Biome's scope.
 
-`prisma/seed.ts` (no public admin signup, by design):
+`prisma/seed.ts` (exists; no public admin signup, by design):
 ```ts
 import "dotenv/config";
 
@@ -348,18 +394,18 @@ await prisma.admin.upsert({
 await prisma.$disconnect();
 ```
 ```bash
-pnpm prisma db seed
-pnpm prisma studio    # verify: admins row with $argon2id$ hash
+pnpm db:seed
+pnpm db:studio    # verify: admins row with $argon2id$ hash
 ```
 
-Also seed 2-3 fake users by hand in Studio (any bytes values) so Milestone 4 has data.
+Once `User` exists, seed 2-3 fake users by hand in Studio (any bytes values) so Milestone 4 has data.
 
 ---
 
 ## Milestone 2: Admin login, refresh, logout (DTOs, services, controllers, JWT, cookies)
 
 ```bash
-pnpm --filter server add @nestjs/jwt
+pnpm --filter server add @nestjs/jwt    # not installed yet
 ```
 
 `src/common/token.util.ts`:
@@ -392,14 +438,14 @@ export class AdminLoginDto {
 }
 ```
 
-`src/admin/auth/admin-auth.service.ts` (login / refresh / logout first; reset is added in Milestone 5):
+`src/admin/auth/admin-auth.service.ts` (login / refresh / logout first; reset is added in Milestone 5). Needs the `Session` model. Reuse the `AdminsService` password-hash approach (`argon2id`); consider throwing `AppException(401, ErrorCode.Unauthorized, ...)` if the client needs a stable code:
 ```ts
 import { Injectable, UnauthorizedException } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import argon2 from "argon2";
 
-import { hashToken, newToken } from "../../common/token.util.js";
-import { PrismaService } from "../../prisma/prisma.service.js";
+import { hashToken, newToken } from "@/common/token.util";
+import { PrismaService } from "@/prisma/prisma.service";
 
 const REFRESH_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 // Used to equalize timing when the email doesn't exist
@@ -480,8 +526,8 @@ import { Body, Controller, HttpCode, Post, Req, Res } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import type { Request, Response } from "express";
 
-import { AdminAuthService } from "./admin-auth.service.js";
-import { AdminLoginDto } from "./dto/admin-login.dto.js";
+import { AdminAuthService } from "./admin-auth.service";
+import { AdminLoginDto } from "./dto/admin-login.dto";
 
 const COOKIE = "admin_refresh";
 
@@ -551,6 +597,7 @@ curl -i -c jar -H 'content-type: application/json' \
   -d '{"email":"admin@padlock.local","password":"ChangeMe-12345!"}' localhost:3000/admin/auth/login
 curl -i -b jar -c jar -X POST localhost:3000/admin/auth/refresh
 ```
+Add `@ApiErrorResponses()` to the controllers, and an `ErrorCode` for refresh/token failures only if the client needs to tell them apart.
 
 ---
 
@@ -562,7 +609,7 @@ import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from
 import { JwtService } from "@nestjs/jwt";
 import type { Request } from "express";
 
-import { PrismaService } from "../../prisma/prisma.service.js";
+import { PrismaService } from "@/prisma/prisma.service";
 
 export type AdminRequest = Request & { admin: { id: string } };
 
@@ -599,7 +646,7 @@ export class AdminJwtGuard implements CanActivate {
 ```ts
 import { createParamDecorator, ExecutionContext } from "@nestjs/common";
 
-import type { AdminRequest } from "./admin-jwt.guard.js";
+import type { AdminRequest } from "./admin-jwt.guard";
 
 export const CurrentAdmin = createParamDecorator((_: unknown, ctx: ExecutionContext) =>
   ctx.switchToHttp().getRequest<AdminRequest>().admin
@@ -614,7 +661,9 @@ me(@CurrentAdmin() admin: { id: string }) {
   return admin;
 }
 ```
-Checkpoint: 401 with no token / tampered token; 200 with a good one. Exercise afterward: rewrite as a global guard + `@Public()` decorator using `Reflector`.
+**Then protect the existing `/admins` CRUD:** it is open today. Add `@UseGuards(AdminJwtGuard)` and `@ApiBearerAuth()` to `AdminsController` (import and provide `AdminJwtGuard`/`JwtModule` in `AdminsModule`, or export them from `AdminModule`). Also decide: when an admin is disabled or deleted via `AdminsService`, revoke their sessions (the guard already rejects disabled admins via the DB check). Once `AdminAuditLog` exists, note `Admin` deletion fails with 409 (P2003) if the admin has audit rows, because that relation has no cascade; decide whether to block deleting or keep it that way.
+
+Checkpoint: 401 with no token / tampered token; 200 with a good one; `/admins` returns 401 without a token. Exercise afterward: rewrite as a global guard + `@Public()` decorator using `Reflector`.
 
 ---
 
@@ -624,6 +673,8 @@ Checkpoint: 401 with no token / tampered token; 200 with a good one. Exercise af
 ```ts
 import { Type } from "class-transformer";
 import { IsEnum, IsInt, IsOptional, IsString, Max, Min } from "class-validator";
+
+import { AccountStatus } from "@/generated/prisma/enums";
 
 export class ListUsersQueryDto {
   @Type(() => Number) @IsInt() @Min(1) @IsOptional()
@@ -635,16 +686,18 @@ export class ListUsersQueryDto {
   @IsString() @IsOptional()
   search?: string;
 
-  @IsEnum(["ACTIVE", "DISABLED"]) @IsOptional()
-  status?: "ACTIVE" | "DISABLED";
+  @IsEnum(AccountStatus) @IsOptional()
+  status?: AccountStatus;
 }
 ```
-`src/admin/users/dto/user-summary.dto.ts`:
+`src/admin/users/dto/user-summary.dto.ts` (same shape as `AdminSummaryDto` in `src/admins/dto/admin-summary.dto.ts`):
 ```ts
+import type { AccountStatus } from "@/generated/prisma/enums";
+
 export class UserSummaryDto {
   id!: string;
   email!: string;
-  status!: "ACTIVE" | "DISABLED";
+  status!: AccountStatus;
   createdAt!: Date;
 }
 
@@ -659,11 +712,12 @@ export class UserListDto {
 ```ts
 import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
 
-import type { AuditAction } from "../../generated/prisma/client.js";
-import { PrismaService } from "../../prisma/prisma.service.js";
-import type { ListUsersQueryDto } from "./dto/list-users-query.dto.js";
+import type { AuditAction } from "@/generated/prisma/client";
+import { PrismaService } from "@/prisma/prisma.service";
 
-// NFR-SEC-5: explicit allowlist. Never findMany() without select,
+import type { ListUsersQueryDto } from "./dto/list-users-query.dto";
+
+// NFR-SEC-5: explicit allowlist (same pattern as SUMMARY in AdminsService). Never findMany() without select,
 // or authHash and wrapped keys would be loaded.
 const SUMMARY = { id: true, email: true, status: true, createdAt: true } as const;
 
@@ -733,14 +787,17 @@ import {
 } from "@nestjs/common";
 import { ApiBearerAuth } from "@nestjs/swagger";
 
-import { AdminJwtGuard } from "../auth/admin-jwt.guard.js";
-import { CurrentAdmin } from "../auth/current-admin.decorator.js";
-import { AdminUsersService } from "./admin-users.service.js";
-import { ListUsersQueryDto } from "./dto/list-users-query.dto.js";
+import { AdminJwtGuard } from "@/admin/auth/admin-jwt.guard";
+import { CurrentAdmin } from "@/admin/auth/current-admin.decorator";
+import { ApiErrorResponses } from "@/common/errors/api-error-responses.decorator";
+
+import { AdminUsersService } from "./admin-users.service";
+import { ListUsersQueryDto } from "./dto/list-users-query.dto";
 
 @Controller("admin/users")
 @UseGuards(AdminJwtGuard)
 @ApiBearerAuth()
+@ApiErrorResponses()
 export class AdminUsersController {
   constructor(private readonly users: AdminUsersService) {}
 
@@ -768,7 +825,7 @@ export class AdminUsersController {
 ```
 Register both in `AdminModule` (`controllers`/`providers`). Decide yourself and note it: delete 404 vs idempotent 204; whether delete should need a confirmation parameter.
 
-Checkpoint: list, disable (user sessions revoked, audit row), reactivate, delete; confirm the response contains no `authHash` / `wrapped*`; `Bad uuid` gives 400; unknown id gives 404.
+Checkpoint: list, disable (user sessions revoked, audit row), reactivate, delete; confirm the response contains no `authHash` / `wrapped*`; a bad UUID gives 400 (`VALIDATION_FAILED`/`BAD_REQUEST`); unknown id gives 404 (the filter shapes all of these).
 
 ---
 
@@ -786,7 +843,7 @@ export interface MailService {
 ```ts
 import { Injectable, Logger } from "@nestjs/common";
 
-import type { MailService } from "./mail.service.js";
+import type { MailService } from "./mail.service";
 
 @Injectable()
 export class ConsoleMailService implements MailService {
@@ -865,15 +922,15 @@ Checkpoint: forgot, copy link from the logs, reset; old password fails, new work
 ## Milestone 6: Hardening (rate limiting)
 
 ```bash
-pnpm --filter server add @nestjs/throttler
+pnpm --filter server add @nestjs/throttler    # not installed yet
 ```
-In `AppModule.imports`: `ThrottlerModule.forRoot([{ ttl: 60_000, limit: 60 }])` and provider `{ provide: APP_GUARD, useClass: ThrottlerGuard }`. On auth routes tighten: `@Throttle({ default: { limit: 5, ttl: 60_000 } })` for `login`, `forgot-password`, `reset-password`. Optional: `@nestjs/schedule` cron to delete expired/used reset tokens and expired sessions (design note 6).
+In `AppModule.imports`: `ThrottlerModule.forRoot([{ ttl: 60_000, limit: 60 }])` and provider `{ provide: APP_GUARD, useClass: ThrottlerGuard }` (next to the existing `APP_FILTER`). A throttled request becomes a 429 through `AllExceptionsFilter`; consider adding a `TooManyRequests` code to `defaultCodeForStatus`. On auth routes tighten: `@Throttle({ default: { limit: 5, ttl: 60_000 } })` for `login`, `forgot-password`, `reset-password`. Optional: `@nestjs/schedule` cron to delete expired/used reset tokens and expired sessions (design note 6).
 
 ---
 
 ## Milestone 7 (recommended): Tests
 
-No runner exists; add one deliberately (turbo `test` task + update CLAUDE.md). Check Vitest vs Jest with this ESM/NodeNext setup.
+No runner exists; add one deliberately (turbo `test` task + update CLAUDE.md). Check Vitest vs Jest with this ESM + `moduleResolution: bundler` + `@/` alias setup (Vitest needs an alias config).
 ```bash
 pnpm --filter server add -D vitest supertest @types/supertest @nestjs/testing
 ```
@@ -883,9 +940,9 @@ Learn: `Test.createTestingModule({...}).overrideProvider(PrismaService).useValue
 
 ## Final verification
 
-1. `docker compose up -d`, `pnpm prisma migrate dev`, `pnpm prisma db seed`
-2. `pnpm dev:server`, open `/docs`: login, Authorize with the token, list, disable, reactivate, delete
-3. Negatives: no token / tampered token / disabled admin = 401; bad UUID = 400; unknown user = 404; forgot-password identical for real vs fake emails; reset link single-use and expires
+1. `docker compose up -d db`, `pnpm db:migrate`, `pnpm db:seed`
+2. `pnpm dev:server`, open `/docs` (spec also lands in `docs/swagger.json`): login, Authorize with the token, list, disable, reactivate, delete
+3. Negatives: no token / tampered token / disabled admin = 401 (including on `/admins`); error bodies match `{ statusCode, code, message, details?, path, timestamp }`; bad UUID = 400; unknown user = 404; forgot-password identical for real vs fake emails; reset link single-use and expires
 4. `pnpm typecheck && pnpm lint` before each commit; one commit per milestone (`feat(server): add admin login`)
 
 When you get stuck or finish a milestone, ask me to explain a concept or review your diff.
