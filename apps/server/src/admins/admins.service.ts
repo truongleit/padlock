@@ -8,6 +8,7 @@ import {
 import type { CreateAdminDto } from "@/admins/dto/create-admin.dto";
 import type { ListAdminsQueryDto } from "@/admins/dto/list-admins-query.dto";
 import type { UpdateAdminDto } from "@/admins/dto/update-admin.dto";
+import { pageArgs, paginated } from "@/common/pagination.util";
 import { hashPassword } from "@/common/password.util";
 import { Prisma } from "@/generated/prisma/client";
 import { PrismaService } from "@/prisma/prisma.service";
@@ -44,12 +45,11 @@ export class AdminsService {
         where,
         select: SUMMARY,
         orderBy: { createdAt: "desc" },
-        skip: (q.page - 1) * q.limit,
-        take: q.limit,
+        ...pageArgs(q),
       }),
       this.prisma.admin.count({ where }),
     ]);
-    return { data, page: q.page, limit: q.limit, total };
+    return paginated(data, q, total);
   }
 
   async findOne(id: string) {
