@@ -75,11 +75,18 @@ export class AdminsService {
       if (admin.status === "ACTIVE" && dto.status === "DISABLED") {
         await this.assertNotLastActive(tx, id);
       }
-      return tx.admin.update({
+      const updated = await tx.admin.update({
         where: { id },
         data: { email: dto.email, status: dto.status },
         select: SUMMARY,
       });
+      if (dto.status === "DISABLED") {
+        await tx.session.updateMany({
+          where: { adminId: id, revokedAt: null },
+          data: { revokedAt: new Date() },
+        });
+      }
+      return updated;
     });
   }
 
