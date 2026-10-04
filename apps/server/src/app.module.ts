@@ -1,8 +1,9 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
-import { APP_FILTER } from "@nestjs/core";
+import { APP_FILTER, APP_GUARD } from "@nestjs/core";
 
 import { AdminModule } from "@/admin/admin.module";
+import { AdminJwtGuard } from "@/admin/auth/admin-jwt.guard";
 import { AdminsModule } from "@/admins/admins.module";
 import { AppController } from "@/app.controller";
 import { AppService } from "@/app.service";
@@ -21,6 +22,7 @@ import { PrismaModule } from "@/prisma/prisma.module";
   providers: [
     AppService,
     { provide: APP_FILTER, useClass: AllExceptionsFilter },
+    { provide: APP_GUARD, useClass: AdminJwtGuard },
   ],
 })
 export class AppModule {}

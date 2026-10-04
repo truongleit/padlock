@@ -1,14 +1,13 @@
 import { PaginatedDto } from "@/common/dto/paginated.dto";
 import type { AccountStatus } from "@/generated/prisma/enums";
 
-export class AdminSummaryDto {
+export class UserSummaryDto {
   id!: string;
   email!: string;
   status!: AccountStatus;
   createdAt!: Date;
-  lastLoginAt!: Date | null;
 }
 
-export class AdminListDto extends PaginatedDto {
-  data!: AdminSummaryDto[];
+export class UserListDto extends PaginatedDto {
+  data!: UserSummaryDto[];
 }
