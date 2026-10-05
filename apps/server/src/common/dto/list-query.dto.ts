@@ -1,30 +1,9 @@
-import { Type } from "class-transformer";
-import {
-  IsEnum,
-  IsInt,
-  IsOptional,
-  IsString,
-  Max,
-  MaxLength,
-  Min,
-} from "class-validator";
+import { IsEnum, IsOptional, IsString, MaxLength } from "class-validator";
 
+import { PaginationQueryDto } from "@/common/dto/pagination-query.dto";
 import { AccountStatus } from "@/generated/prisma/enums";
 
-export class ListQueryDto {
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  @IsOptional()
-  page = 1;
-
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  @Max(100)
-  @IsOptional()
-  limit = 20;
-
+export class ListQueryDto extends PaginationQueryDto {
   @IsString()
   @MaxLength(254)
   @IsOptional()
