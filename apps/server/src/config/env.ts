@@ -10,6 +10,11 @@ const schema = z.object({
   ADMIN_WEB_ORIGIN: z.url(),
   PORT: z.coerce.number().default(3000),
   NODE_ENV: z.string().default("development"),
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.coerce.number().default(587),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASS: z.string().optional(),
+  MAIL_FROM: z.string().default("Padlock <no-reply@padlock.local>"),
 });
 
 export type Env = z.infer<typeof schema>;
