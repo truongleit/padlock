@@ -8,8 +8,13 @@
     "typecheck": "tsc"
   },
   "dependencies": {
+    "@ant-design/icons": "^6.3.4",
+    "@tanstack/react-query": "^5.104.1",
+    "antd": "^6.6.5",
+    "ky": "^2.1.0",
     "react": "^19.3.0",
-    "react-dom": "^19.3.0"
+    "react-dom": "^19.3.0",
+    "react-router": "^8.4.0"
   },
   "devDependencies": {
     "@types/node": "^26.6.3",
