@@ -27,7 +27,7 @@ export function LoginForm() {
       </Form.Item>
       <Form.Item>
         <Button type="primary" htmlType="submit" block>
-          Log in
+          Log in into Mehran
         </Button>
       </Form.Item>
       <Link to="/forgot-password">Forgot password?</Link>

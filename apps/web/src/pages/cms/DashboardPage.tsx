@@ -4,7 +4,7 @@ export function DashboardPage() {
   return (
     <>
       <Typography.Title level={3}>Dashboard</Typography.Title>
-      <Card>Welcome to Padlock.</Card>
+      <Card>Welcome to Padlock. Hello Mehran.</Card>
     </>
   );
 }
