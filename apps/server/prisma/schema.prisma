@@ -110,5 +110,8 @@ model AdminAuditLog {
   createdAt    DateTime    @default(now()) @map("created_at") @db.Timestamptz
   admin        Admin       @relation(fields: [adminId], references: [id])
 
+  @@index([createdAt(sort: Desc)])
+  @@index([targetUserId, createdAt(sort: Desc)])
+  @@index([adminId, createdAt(sort: Desc)])
   @@map("admin_audit_logs")
 }

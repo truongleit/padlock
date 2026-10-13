@@ -1,6 +1,6 @@
 # Padlock
 
-Early-stage Turborepo monorepo. Contains two apps: `apps/web`, a Vite + React 19 SPA that renders a placeholder heading, and `apps/server`, a NestJS app backed by Postgres (Prisma) with a hello route and an `admins` CRUD module. There is no auth yet (the `/admins` endpoints are open, dev only), and no tests, CI, or deployment config.
+Early-stage Turborepo monorepo. Contains two apps: `apps/web`, a Vite + React 19 SPA that renders a placeholder heading, and `apps/server`, a NestJS app backed by Postgres (Prisma) with a hello route, an `admins` CRUD module, admin JWT auth (login/refresh/logout), user management, and an audit log listing. Every route requires an admin Bearer token unless marked public. There are no tests, CI, or deployment config.
 
 ## Tech stack
 
@@ -34,7 +34,7 @@ pnpm dev
 
 The server listens on `PORT` (default 3000). Swagger UI is at `/docs`.
 
-Required env vars (see `apps/server/.env.example`): `DATABASE_URL`, `ADMIN_JWT_SECRET` (32+ chars), `ADMIN_WEB_ORIGIN`. `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD` are used by the seed script.
+Required env vars (see `apps/server/.env.example`): `DATABASE_URL`, `ADMIN_JWT_SECRET` (32+ chars), `ADMIN_WEB_ORIGIN`. `ADMIN_JWT_EXPIRES_IN` sets the access-token lifetime (default `1h`). `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD` are used by the seed script, and that seeded admin is the one you log in with at `POST /admin/auth/login`.
 
 ## Scripts
 
@@ -63,6 +63,7 @@ apps/
   web/              Vite + React app (entry: src/main.tsx, root: src/App.tsx)
   server/           NestJS app (entry: src/main.ts, root: src/app.module.ts)
     prisma/         Schema, migrations, seed
+    src/admin/      Admin auth, users, and audit log modules
     src/admins/     Admins CRUD module
     src/config/     Env validation
     src/common/     Shared error handling
@@ -76,21 +77,40 @@ biome.json          Lint and format config
 
 ## API
 
+Every route requires `Authorization: Bearer <admin JWT>` unless listed as public.
+
+Public:
+
 | Method | Path | Description |
 | --- | --- | --- |
+| `GET` | `/` | Hello route |
+| `POST` | `/admin/auth/login` | Log in, returns an access token and sets the refresh cookie |
+| `POST` | `/admin/auth/refresh` | Refresh the access token |
+| `POST` | `/admin/auth/logout` | Log out |
+
+Authenticated:
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `GET` | `/admin/auth/me` | Current admin |
+| `GET` | `/admin/users` | List users (`page`, `limit`, `search`, `status`) |
+| `PATCH` | `/admin/users/:id/disable` | Disable a user and revoke their sessions |
+| `PATCH` | `/admin/users/:id/reactivate` | Reactivate a user |
+| `DELETE` | `/admin/users/:id` | Delete a user |
+| `GET` | `/admin/audit-logs` | List audit logs (`page`, `limit`, `action`, `adminId`, `targetUserId`, `from`, `to`) |
 | `POST` | `/admins` | Create an admin |
 | `GET` | `/admins` | List admins |
 | `GET` | `/admins/:id` | Get one admin |
 | `PATCH` | `/admins/:id` | Update an admin |
 | `DELETE` | `/admins/:id` | Delete an admin |
 
-Passwords are stored as argon2 hashes and never returned. These endpoints have no auth yet.
+Passwords are stored as argon2 hashes and never returned. Full spec: Swagger UI at `/docs`.
 
 ## Docs
 
 - `docs/padlock_srs.md`: requirements
 - `docs/padlock_database_design.md`: database design
-- `guides/`: admin feature walkthroughs (`ADMIN_GUIDE.md`, `ADMIN_CRUD_GUIDE.md`, `ADMIN_AUTH_GUIDE.md`)
+- `guides/`: admin feature walkthroughs (`ADMIN_GUIDE.md`, `ADMIN_CRUD_GUIDE.md`, `ADMIN_AUTH_GUIDE.md`, `ADMIN_GUARD_USERS_GUIDE.md`)
 
 ## Contributing
 
