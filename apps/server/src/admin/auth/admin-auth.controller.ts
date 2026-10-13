@@ -1,12 +1,24 @@
-import { Body, Controller, HttpCode, Post, Req, Res } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  Post,
+  Req,
+  Res,
+} from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import { ApiBearerAuth } from "@nestjs/swagger";
 import type { Request, Response } from "express";
 
 import {
   AdminAuthService,
   REFRESH_TTL_MS,
 } from "@/admin/auth/admin-auth.service";
+import type { AuthenticatedAdmin } from "@/admin/auth/admin-jwt.guard";
+import { CurrentAdmin } from "@/admin/auth/current-admin.decorator";
 import { AdminLoginDto } from "@/admin/auth/dto/admin-login.dto";
+import { Public } from "@/admin/auth/public.decorator";
 import { ApiErrorResponses } from "@/common/errors/api-error-responses.decorator";
 
 const COOKIE = "admin_refresh";
@@ -20,6 +32,7 @@ export class AdminAuthController {
     private readonly config: ConfigService
   ) {}
 
+  @Public()
   @Post("login")
   @HttpCode(200)
   async login(
@@ -34,6 +47,7 @@ export class AdminAuthController {
     return { accessToken };
   }
 
+  @Public()
   @Post("refresh")
   @HttpCode(200)
   async refresh(
@@ -47,11 +61,18 @@ export class AdminAuthController {
     return { accessToken };
   }
 
+  @Public()
   @Post("logout")
   @HttpCode(204)
   async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     await this.auth.logout(this.readCookie(req));
     res.clearCookie(COOKIE, { path: COOKIE_PATH });
+  }
+
+  @Get("me")
+  @ApiBearerAuth()
+  me(@CurrentAdmin() admin: AuthenticatedAdmin | undefined) {
+    return admin;
   }
 
   private readCookie(req: Request): string | undefined {

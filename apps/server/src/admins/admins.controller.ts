@@ -10,6 +10,7 @@ import {
   Post,
   Query,
 } from "@nestjs/common";
+import { ApiBearerAuth } from "@nestjs/swagger";
 
 import { AdminsService } from "@/admins/admins.service";
 import { CreateAdminDto } from "@/admins/dto/create-admin.dto";
@@ -17,6 +18,7 @@ import { ListAdminsQueryDto } from "@/admins/dto/list-admins-query.dto";
 import type { UpdateAdminDto } from "@/admins/dto/update-admin.dto";
 
 @Controller("admins")
+@ApiBearerAuth()
 export class AdminsController {
   constructor(private readonly admins: AdminsService) {}
 

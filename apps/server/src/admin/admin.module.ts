@@ -4,6 +4,9 @@ import { JwtModule, type JwtSignOptions } from "@nestjs/jwt";
 
 import { AdminAuthController } from "@/admin/auth/admin-auth.controller";
 import { AdminAuthService } from "@/admin/auth/admin-auth.service";
+import { AdminJwtGuard } from "@/admin/auth/admin-jwt.guard";
+import { AdminUsersController } from "@/admin/users/admin-users.controller";
+import { AdminUsersService } from "@/admin/users/admin-users.service";
 
 @Module({
   imports: [
@@ -19,7 +22,8 @@ import { AdminAuthService } from "@/admin/auth/admin-auth.service";
       }),
     }),
   ],
-  controllers: [AdminAuthController],
-  providers: [AdminAuthService],
+  controllers: [AdminAuthController, AdminUsersController],
+  providers: [AdminAuthService, AdminJwtGuard, AdminUsersService],
+  exports: [JwtModule, AdminJwtGuard],
 })
 export class AdminModule {}

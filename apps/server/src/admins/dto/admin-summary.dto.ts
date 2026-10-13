@@ -1,3 +1,4 @@
+import { PaginatedDto } from "@/common/dto/paginated.dto";
 import type { AccountStatus } from "@/generated/prisma/enums";
 
 export class AdminSummaryDto {
@@ -8,9 +9,6 @@ export class AdminSummaryDto {
   lastLoginAt!: Date | null;
 }
 
-export class AdminListDto {
+export class AdminListDto extends PaginatedDto {
   data!: AdminSummaryDto[];
-  page!: number;
-  limit!: number;
-  total!: number;
 }
