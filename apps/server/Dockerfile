@@ -3,7 +3,7 @@ RUN npm i -g pnpm@12.8.1
 WORKDIR /app
 COPY . .
 RUN pnpm install --frozen-lockfile --filter server...
-RUN pnpm --filter server db:generate && pnpm --filter server build
+RUN DATABASE_URL=postgresql://build:build@localhost:5432/build pnpm --filter server db:generate && pnpm --filter server build
 WORKDIR /app/apps/server
 EXPOSE 3000
 # Run migrations, then start
