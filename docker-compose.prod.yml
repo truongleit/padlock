@@ -1,0 +1,17 @@
+services:
+  db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: padlock
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: padlock
+    volumes: [pgdata:/var/lib/postgresql/data] # do not publish port 5432
+  server:
+    image: ghcr.io/${GHCR_OWNER}/padlock-server:latest
+    restart: unless-stopped
+    env_file: .env
+    depends_on: [db]
+    ports: ["127.0.0.1:3000:3000"] # localhost only; exposed publicly via Caddy
+volumes:
+  pgdata:
