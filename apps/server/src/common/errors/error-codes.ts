@@ -9,6 +9,7 @@ export const ErrorCode = {
   Conflict: "CONFLICT",
   EmailTaken: "EMAIL_TAKEN",
   Internal: "INTERNAL_ERROR",
+  TooManyRequests: "TOO_MANY_REQUESTS",
 } as const;
 
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];
@@ -25,6 +26,8 @@ export function defaultCodeForStatus(status: number): ErrorCode {
       return ErrorCode.NotFound;
     case HttpStatus.CONFLICT:
       return ErrorCode.Conflict;
+    case HttpStatus.TOO_MANY_REQUESTS:
+      return ErrorCode.TooManyRequests;
     default:
       return ErrorCode.Internal;
   }
