@@ -19,8 +19,8 @@ import {
 import type { AuthenticatedAdmin } from "@/admin/auth/admin-jwt.guard";
 import { CurrentAdmin } from "@/admin/auth/current-admin.decorator";
 import { AdminLoginDto } from "@/admin/auth/dto/admin-login.dto";
-import type { ForgotPasswordDto } from "@/admin/auth/dto/forgot-password.dto";
-import type { ResetPasswordDto } from "@/admin/auth/dto/reset-password.dto";
+import { ForgotPasswordDto } from "@/admin/auth/dto/forgot-password.dto";
+import { ResetPasswordDto } from "@/admin/auth/dto/reset-password.dto";
 import { Public } from "@/admin/auth/public.decorator";
 import { ApiErrorResponses } from "@/common/errors/api-error-responses.decorator";
 
