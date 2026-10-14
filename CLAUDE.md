@@ -2,7 +2,7 @@
 
 Early-stage Turborepo monorepo. Two apps: `apps/web` (Vite + React 19 SPA, placeholder heading) and `apps/server` (NestJS 12, Postgres via Prisma 7, a hello route, an `admins` CRUD module, and admin auth + password reset + user management, mail module, rate limiting). The only Docker file is `docker-compose.yml` (local Postgres). No tests, CI, or deployment config exists yet. Don't assume any of them; add them deliberately.
 
-Specs and guides: `docs/padlock_srs.md`, `docs/padlock_database_design.md`, `guides/ADMIN_GUIDE.md` (big picture for the admin feature), `guides/ADMIN_CRUD_GUIDE.md` (step-by-step `admins` CRUD), `guides/ADMIN_AUTH_GUIDE.md` (tables + admin login/refresh/logout), `guides/ADMIN_GUARD_USERS_GUIDE.md` (JWT guard + admin users listing/disable/delete), `guides/ADMIN_RESET_THROTTLE_GUIDE.md` (forgot/reset password + rate limiting).
+Specs and guides: `docs/padlock_srs.md`, `docs/padlock_database_design.md`, `guides/ADMIN_GUIDE.md` (big picture for the admin feature), `guides/ADMIN_CRUD_GUIDE.md` (step-by-step `admins` CRUD), `guides/ADMIN_AUTH_GUIDE.md` (tables + admin login/refresh/logout), `guides/ADMIN_GUARD_USERS_GUIDE.md` (JWT guard + admin users listing/disable/delete), `guides/ADMIN_RESET_THROTTLE_GUIDE.md` (forgot/reset password + rate limiting), `guides/DEPLOY_VPS_GUIDE.md` (server on a VPS), `guides/DEPLOY_WEB_GUIDE.md` (web on the same VPS; follow-up to the server guide).
 
 @AGENTS.md
 
