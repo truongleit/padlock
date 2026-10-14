@@ -15,7 +15,7 @@ import { ApiBearerAuth } from "@nestjs/swagger";
 import { AdminsService } from "@/admins/admins.service";
 import { CreateAdminDto } from "@/admins/dto/create-admin.dto";
 import { ListAdminsQueryDto } from "@/admins/dto/list-admins-query.dto";
-import type { UpdateAdminDto } from "@/admins/dto/update-admin.dto";
+import { UpdateAdminDto } from "@/admins/dto/update-admin.dto";
 
 @Controller("admins")
 @ApiBearerAuth()
