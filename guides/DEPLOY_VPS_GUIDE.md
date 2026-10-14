@@ -60,12 +60,12 @@ POSTGRES_PASSWORD=<strong-password>
 DATABASE_URL=postgresql://padlock:<strong-password>@db:5432/padlock
 ADMIN_JWT_SECRET=<openssl rand -base64 48>
 ADMIN_JWT_EXPIRES_IN=1h
-ADMIN_WEB_ORIGIN=https://<web-domain>
+ADMIN_WEB_ORIGIN=https://truongle.me   # web app origin, not the API
 SMTP_HOST=          # leave empty and mails are only logged to the console
 SMTP_PORT=587
 SMTP_USER=
 SMTP_PASS=
-MAIL_FROM="Padlock <no-reply@yourdomain.com>"
+MAIL_FROM="Padlock <no-reply@truongle.me>"
 ```
 
 - **Why the `.env` lives only on the VPS** – secrets must never be in the repo or the image. CI never sees them; it only replaces the `GHCR_OWNER` and `IMAGE_TAG` lines (see the workflow).
@@ -241,13 +241,49 @@ Rollback: re-run the workflow for an older tag from the Actions tab, or on the V
 - **Why it works** – every release is a separate image, and old ones stay in GHCR, so going back is just pointing `IMAGE_TAG` at an old tag.
 - **Caveat** – a rollback does not undo database migrations. If the newer release added a migration, make sure the older code still works with that schema, or restore a backup.
 
-## Part 4: HTTPS with Caddy
+## Part 4: Domain (Namesilo) and HTTPS with Caddy
 
-Point your domain's A record (e.g. `api.yourdomain.com`) at the VPS IP, then on the VPS:
+Goal: `https://api.truongle.me` → Caddy on the VPS (HTTPS) → the Nest container on `127.0.0.1:3000`. The domain `truongle.me` is registered at Namesilo; the server is at Contabo. The two only meet through one DNS record.
+
+### 4.1 Point `api.truongle.me` at the VPS (Namesilo DNS)
+
+1. Log in to Namesilo → **Domain Manager** → click `truongle.me` → **DNS Records** (the "DNS" icon, or "Manage DNS").
+2. Make sure the domain uses Namesilo's own nameservers (`ns1.dnsowl.com`, `ns2.dnsowl.com`, `ns3.dnsowl.com`, the default). If you changed them to something else, edit records at that provider instead.
+3. Delete any existing record for the `api` host (check for parking records).
+4. Add a record:
+
+| Type | Hostname | Value | TTL |
+| --- | --- | --- | --- |
+| `A` | `api` | `<VPS_IP>` (the Contabo IPv4) | `3600` (or the minimum while testing) |
+
+   - In the Hostname field enter only `api`; Namesilo appends `.truongle.me`.
+   - Optional, if your Contabo VPS has an IPv6 address you want to use: add an `AAAA` record with the same hostname. Skip it otherwise; a wrong `AAAA` breaks HTTPS for IPv6 clients and certificate issuance.
+5. Do **not** use Namesilo's "Domain Forwarding" or "Parked" features for this host; they replace the DNS record with Namesilo's own servers.
+
+Why each choice:
+
+- **`A` record** – maps a name to an IPv4 address. This is the only link between Namesilo and Contabo; nothing else needs configuring on the Contabo side besides the server answering for that name (Caddy, below).
+- **Host `api`** – gives you the subdomain `api.truongle.me` and leaves the root `truongle.me` free for the web app later (which can point somewhere else, such as Vercel/Cloudflare Pages, or the same VPS).
+- **Low TTL** – TTL is how long resolvers cache the answer. A short value means a wrong IP is corrected quickly; raise it once everything works.
+- **Propagation** – usually minutes, occasionally up to an hour. Check from your machine:
+
+```bash
+dig +short api.truongle.me     # should print <VPS_IP>
+```
+
+If it prints nothing or an old IP, wait and retry. Do not continue to 4.2 until it matches; Let's Encrypt will fail otherwise and rate-limits repeated failures.
+
+### 4.2 Install Caddy and proxy to the app
+
+On the VPS:
 
 ```bash
 sudo apt install -y caddy
-echo 'api.yourdomain.com { reverse_proxy 127.0.0.1:3000 }' | sudo tee /etc/caddy/Caddyfile
+sudo tee /etc/caddy/Caddyfile >/dev/null <<'EOF'
+api.truongle.me {
+  reverse_proxy 127.0.0.1:3000
+}
+EOF
 sudo systemctl reload caddy
 ```
 
@@ -255,9 +291,29 @@ Caddy issues and renews the SSL certificate automatically.
 
 - **Why a reverse proxy** – the Nest app speaks plain HTTP on port 3000; Caddy terminates HTTPS on 443 and forwards to it. Login tokens and passwords must not travel unencrypted.
 - **Why Caddy** – certificates from Let's Encrypt are obtained and renewed with no extra config (certbot cron jobs, nginx TLS blocks).
-- **DNS first** – Let's Encrypt validates that the domain points at this server. If the A record has not propagated, certificate issuance fails; check with `dig api.yourdomain.com`.
-- **Ports 80/443 open** – already done in the firewall step; Caddy needs both (80 for the validation challenge and redirects).
+- **DNS first** – Let's Encrypt validates that the domain points at this server (see 4.1).
+- **Ports 80/443 open** – already done in the firewall step; Caddy needs both (80 for the validation challenge and redirects). If you enabled a firewall in the Contabo panel, allow 80 and 443 there too.
 - **`127.0.0.1:3000`** – matches the localhost-only port binding in the compose file.
+
+### 4.3 Verify
+
+```bash
+curl -i https://api.truongle.me/           # hello route, 200 with a valid certificate
+curl -i https://api.truongle.me/docs       # Swagger UI
+sudo journalctl -u caddy -n 50 --no-pager  # certificate issuance logs if something fails
+```
+
+Troubleshooting:
+
+- **Certificate error / timeout** – DNS not propagated, ports 80/443 blocked (`sudo ufw status`), or something else already listens on 80 (`sudo ss -tlnp | grep ':80'`).
+- **`502 Bad Gateway`** – the container is not running or not on port 3000: `docker compose -f docker-compose.prod.yml ps` and check the `server` logs.
+- **Browser CORS errors** – the API is fine; `ADMIN_WEB_ORIGIN` in the VPS `.env` must equal the web app's exact origin. Update it, then run `docker compose -f docker-compose.prod.yml up -d` (the env file is read at container creation).
+
+### 4.4 Point the clients at the API
+
+- **Web app** – set its API base URL to `https://api.truongle.me` in the production build (e.g. a Vite env var such as `VITE_API_URL`).
+- **`ADMIN_WEB_ORIGIN`** – the origin of the *web app*, not of the API. If the web app will live at `https://truongle.me` (or `https://app.truongle.me`), use that. Since `api` is a different subdomain, requests are cross-origin and depend on this CORS setting.
+- **`MAIL_FROM`** – an address on your domain such as `no-reply@truongle.me` is fine, but real delivery needs an SMTP provider plus SPF/DKIM records added on the same Namesilo DNS page. Skip until you set up SMTP.
 
 ## Part 5: Seed the first admin
 

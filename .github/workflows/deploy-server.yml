@@ -1,9 +1,7 @@
 name: Deploy server
 on:
   push:
-    branches: [main]
-    paths: ["apps/server/**", "pnpm-lock.yaml", "docker-compose.prod.yml"]
-  workflow_dispatch:
+    tags: ["v*"]
 
 permissions:
   contents: read
@@ -24,7 +22,7 @@ jobs:
           context: .
           file: apps/server/Dockerfile
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/padlock-server:latest
+          tags: ghcr.io/${{ github.repository_owner }}/padlock-server:${{ github.ref_name }}
 
       - name: Copy compose file
         uses: appleboy/scp-action@v0.1.7
@@ -44,7 +42,9 @@ jobs:
           script: |
             cd ~/padlock
             echo ${{ secrets.GHCR_PAT }} | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
-            export GHCR_OWNER=${{ github.repository_owner }}
+            sed -i '/^GHCR_OWNER=/d;/^IMAGE_TAG=/d' .env
+            echo "GHCR_OWNER=${{ github.repository_owner }}" >> .env
+            echo "IMAGE_TAG=${{ github.ref_name }}" >> .env
             docker compose -f docker-compose.prod.yml pull server
             docker compose -f docker-compose.prod.yml up -d
             docker image prune -f
