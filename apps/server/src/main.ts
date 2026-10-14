@@ -20,7 +20,10 @@ async function bootstrap() {
   app.use(helmet());
   app.use(cookieParser());
   app.enableCors({
-    origin: config.getOrThrow<string>("ADMIN_WEB_ORIGIN"),
+    origin: [
+      config.getOrThrow<string>("ADMIN_WEB_ORIGIN"),
+      ...config.getOrThrow<string[]>("ADMIN_EXTRA_ORIGINS"),
+    ],
     credentials: true,
   });
   app.useGlobalPipes(

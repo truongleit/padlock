@@ -71,7 +71,7 @@ export class AdminAuthController {
   @HttpCode(204)
   async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     await this.auth.logout(this.readCookie(req));
-    res.clearCookie(COOKIE, { path: COOKIE_PATH });
+    res.clearCookie(COOKIE, this.cookieOptions());
   }
 
   @Get("me")
@@ -104,11 +104,19 @@ export class AdminAuthController {
 
   private setCookie(res: Response, token: string) {
     res.cookie(COOKIE, token, {
-      httpOnly: true,
-      secure: this.config.get("NODE_ENV") === "production",
-      sameSite: "strict",
-      path: COOKIE_PATH,
+      ...this.cookieOptions(),
       maxAge: REFRESH_TTL_MS,
     });
+  }
+
+  private cookieOptions() {
+    const crossSite = this.config.get<boolean>("ADMIN_COOKIE_CROSS_SITE");
+    return {
+      httpOnly: true,
+      // SameSite=None is rejected by browsers unless Secure.
+      secure: crossSite || this.config.get("NODE_ENV") === "production",
+      sameSite: crossSite ? ("none" as const) : ("strict" as const),
+      path: COOKIE_PATH,
+    };
   }
 }

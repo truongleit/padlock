@@ -8,6 +8,22 @@ const schema = z.object({
     .regex(/^\d+(ms|s|m|h|d)$/)
     .default("1h"),
   ADMIN_WEB_ORIGIN: z.url(),
+  // Extra CORS origins (comma-separated), e.g. http://localhost:5173 for local dev.
+  ADMIN_EXTRA_ORIGINS: z
+    .string()
+    .default("")
+    .transform((v) =>
+      v
+        .split(",")
+        .map((o) => o.trim())
+        .filter(Boolean)
+    )
+    .pipe(z.array(z.url())),
+  // SameSite=None refresh cookie, needed when a cross-site origin (localhost) calls the API.
+  ADMIN_COOKIE_CROSS_SITE: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((v) => v === "true"),
   PORT: z.coerce.number().default(3000),
   NODE_ENV: z.string().default("development"),
   SMTP_HOST: z.string().optional(),
