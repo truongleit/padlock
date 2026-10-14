@@ -1,5 +1,7 @@
 import { createBrowserRouter, Navigate } from "react-router";
 
+import { RedirectIfAuthed } from "@/components/auth/RedirectIfAuthed";
+import { RequireAuth } from "@/components/auth/RequireAuth";
 import { AuthLayout } from "@/components/layouts/AuthLayout";
 import { CmsLayout } from "@/components/layouts/CmsLayout";
 import { ForgotPasswordPage } from "@/pages/auth/ForgotPasswordPage";
@@ -8,15 +10,25 @@ import { DashboardPage } from "@/pages/cms/DashboardPage";
 
 export const router = createBrowserRouter([
   {
-    element: <AuthLayout />,
+    element: <RedirectIfAuthed />,
     children: [
-      { path: "/login", element: <LoginPage /> },
-      { path: "/forgot-password", element: <ForgotPasswordPage /> },
+      {
+        element: <AuthLayout />,
+        children: [
+          { path: "/login", element: <LoginPage /> },
+          { path: "/forgot-password", element: <ForgotPasswordPage /> },
+        ],
+      },
     ],
   },
   {
-    element: <CmsLayout />,
-    children: [{ path: "/", element: <DashboardPage /> }],
+    element: <RequireAuth />,
+    children: [
+      {
+        element: <CmsLayout />,
+        children: [{ path: "/", element: <DashboardPage /> }],
+      },
+    ],
   },
   { path: "*", element: <Navigate to="/" replace /> },
 ]);

@@ -1,0 +1,33 @@
+name: Deploy web
+on:
+  push:
+    tags: ["cms-v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 25
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --filter web...
+      - run: pnpm --filter web build
+        env:
+          VITE_API_URL: https://api.truongle.me
+
+      - name: Upload to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: deploy
+          key: ${{ secrets.VPS_SSH_KEY }}
+          source: apps/web/dist/*
+          strip_components: 3
+          target: /var/www/padlock/web
+          rm: true
