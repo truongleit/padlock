@@ -8,7 +8,7 @@ services:
       POSTGRES_DB: padlock
     volumes: [pgdata:/var/lib/postgresql/data] # do not publish port 5432
   server:
-    image: ghcr.io/${GHCR_OWNER}/padlock-server:latest
+    image: ghcr.io/${GHCR_OWNER}/padlock-server:${IMAGE_TAG}
     restart: unless-stopped
     env_file: .env
     depends_on: [db]
