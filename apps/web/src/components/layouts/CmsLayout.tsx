@@ -2,6 +2,7 @@ import {
   DashboardOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
+  TeamOutlined,
 } from "@ant-design/icons";
 import { Button, Grid, Layout, Menu, Typography, theme } from "antd";
 import { useState } from "react";
@@ -11,6 +12,7 @@ import { UserMenu } from "@/components/layouts/UserMenu";
 
 const navItems = [
   { key: "/", label: "Dashboard", icon: <DashboardOutlined /> },
+  { key: "/admins", label: "Admins", icon: <TeamOutlined /> },
 ];
 
 export function CmsLayout() {
