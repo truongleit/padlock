@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
@@ -62,7 +63,10 @@ export class AdminsService {
   }
 
   // Unique-email violations (P2002) are mapped to 409 by AllExceptionsFilter.
-  update(id: string, dto: UpdateAdminDto) {
+  update(actorId: string, id: string, dto: UpdateAdminDto) {
+    if (actorId === id && dto.status === "DISABLED") {
+      throw new ForbiddenException("You cannot disable your own account");
+    }
     if (dto.email === undefined && dto.status === undefined) {
       throw new BadRequestException("Nothing to update");
     }
@@ -90,7 +94,10 @@ export class AdminsService {
     });
   }
 
-  async remove(id: string) {
+  async remove(actorId: string, id: string) {
+    if (actorId === id) {
+      throw new ForbiddenException("You cannot delete your own account");
+    }
     await this.prisma.$transaction(async (tx) => {
       const admin = await tx.admin.findUnique({
         where: { id },

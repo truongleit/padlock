@@ -12,6 +12,8 @@ import {
 } from "@nestjs/common";
 import { ApiBearerAuth } from "@nestjs/swagger";
 
+import type { AuthenticatedAdmin } from "@/admin/auth/admin-jwt.guard";
+import { CurrentAdmin } from "@/admin/auth/current-admin.decorator";
 import { AdminsService } from "@/admins/admins.service";
 import { CreateAdminDto } from "@/admins/dto/create-admin.dto";
 import { ListAdminsQueryDto } from "@/admins/dto/list-admins-query.dto";
@@ -38,13 +40,20 @@ export class AdminsController {
   }
 
   @Patch(":id")
-  update(@Param("id", ParseUUIDPipe) id: string, @Body() dto: UpdateAdminDto) {
-    return this.admins.update(id, dto);
+  update(
+    @CurrentAdmin() admin: AuthenticatedAdmin | undefined,
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() dto: UpdateAdminDto
+  ) {
+    return this.admins.update(admin?.id ?? "", id, dto);
   }
 
   @Delete(":id")
   @HttpCode(204)
-  remove(@Param("id", ParseUUIDPipe) id: string) {
-    return this.admins.remove(id);
+  remove(
+    @CurrentAdmin() admin: AuthenticatedAdmin | undefined,
+    @Param("id", ParseUUIDPipe) id: string
+  ) {
+    return this.admins.remove(admin?.id ?? "", id);
   }
 }
