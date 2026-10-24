@@ -4,6 +4,7 @@ import type { AuditAction } from "@/generated/prisma/enums";
 export class AuditLogDto {
   id!: string;
   adminId!: string;
+  adminEmail!: string;
   targetUserId!: string;
   action!: AuditAction;
   createdAt!: Date;
