@@ -1,5 +1,6 @@
 export interface Session {
   id: string;
+  email: string;
 }
 
 export interface LoginInput {

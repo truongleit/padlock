@@ -9,6 +9,7 @@ import {
   useUpdateAdmin,
 } from "@/features/admins/hooks";
 import type { Admin } from "@/features/admins/types";
+import { useSession } from "@/features/auth/hooks";
 
 const formatDate = (iso: string | null) =>
   iso ? new Date(iso).toLocaleString() : "-";
@@ -19,6 +20,7 @@ export function AdminsPage() {
   const [limit, setLimit] = useState(10);
   const [open, setOpen] = useState(false);
   const { data, isFetching } = useAdmins({ page, limit });
+  const { data: session } = useSession();
   const updateAdmin = useUpdateAdmin();
   const removeAdmin = useRemoveAdmin();
   const busy = updateAdmin.isPending || removeAdmin.isPending;
@@ -77,6 +79,7 @@ export function AdminsPage() {
           {
             title: "Actions",
             render: (_, admin) => {
+              if (admin.id === session?.id) return null;
               const isActive = admin.status === "ACTIVE";
               const toggle = () =>
                 run(
