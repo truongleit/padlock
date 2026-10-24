@@ -2,14 +2,12 @@ import { LogoutOutlined } from "@ant-design/icons";
 import { Avatar, Dropdown, Grid, Space, Typography } from "antd";
 import { useNavigate } from "react-router";
 
-import { useLogout } from "@/features/auth/hooks";
-
-// /admin/auth/me only returns the admin id, so there is no email to show.
-const label = "Admin";
+import { useLogout, useSession } from "@/features/auth/hooks";
 
 export function UserMenu() {
   const navigate = useNavigate();
   const { mutate: logout } = useLogout();
+  const label = useSession().data?.email ?? "Admin";
   const showName = Grid.useBreakpoint().md;
 
   return (
@@ -30,7 +28,9 @@ export function UserMenu() {
       }}
     >
       <Space style={{ cursor: "pointer" }}>
-        <Avatar style={{ background: "#1677ff" }}>{label.charAt(0)}</Avatar>
+        <Avatar style={{ background: "#1677ff" }}>
+          {label.charAt(0).toUpperCase()}
+        </Avatar>
         {showName && <Typography.Text>{label}</Typography.Text>}
       </Space>
     </Dropdown>

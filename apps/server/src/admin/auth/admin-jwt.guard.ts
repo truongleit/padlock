@@ -11,7 +11,7 @@ import type { Request } from "express";
 import { IS_PUBLIC_KEY } from "@/admin/auth/public.decorator";
 import { PrismaService } from "@/prisma/prisma.service";
 
-export type AuthenticatedAdmin = { id: string };
+export type AuthenticatedAdmin = { id: string; email: string };
 export type AdminRequest = Request & { admin?: AuthenticatedAdmin };
 
 @Injectable()
@@ -45,11 +45,11 @@ export class AdminJwtGuard implements CanActivate {
     // access token expires.
     const admin = await this.prisma.admin.findUnique({
       where: { id: payload.sub },
-      select: { id: true, status: true },
+      select: { id: true, email: true, status: true },
     });
     if (admin?.status !== "ACTIVE") throw new UnauthorizedException();
 
-    req.admin = { id: admin.id };
+    req.admin = { id: admin.id, email: admin.email };
     return true;
   }
 }
