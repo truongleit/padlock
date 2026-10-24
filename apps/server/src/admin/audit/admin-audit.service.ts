@@ -11,6 +11,7 @@ const SUMMARY = {
   targetUserId: true,
   action: true,
   createdAt: true,
+  admin: { select: { email: true } },
 } as const;
 
 @Injectable()
@@ -24,7 +25,7 @@ export class AdminAuditLogService {
       ...(q.targetUserId && { targetUserId: q.targetUserId }),
       ...((q.from || q.to) && { createdAt: { gte: q.from, lte: q.to } }),
     };
-    const [data, total] = await this.prisma.$transaction([
+    const [rows, total] = await this.prisma.$transaction([
       this.prisma.adminAuditLog.findMany({
         where,
         select: SUMMARY,
@@ -33,6 +34,10 @@ export class AdminAuditLogService {
       }),
       this.prisma.adminAuditLog.count({ where }),
     ]);
+    const data = rows.map(({ admin, ...r }) => ({
+      ...r,
+      adminEmail: admin.email,
+    }));
     return paginated(data, q, total);
   }
 }
