@@ -7,6 +7,7 @@ import { CmsLayout } from "@/components/layouts/CmsLayout";
 import { ForgotPasswordPage } from "@/pages/auth/ForgotPasswordPage";
 import { LoginPage } from "@/pages/auth/LoginPage";
 import { AdminsPage } from "@/pages/cms/AdminsPage";
+import { AuditPage } from "@/pages/cms/AuditPage";
 import { DashboardPage } from "@/pages/cms/DashboardPage";
 
 export const router = createBrowserRouter([
@@ -30,6 +31,7 @@ export const router = createBrowserRouter([
         children: [
           { path: "/", element: <DashboardPage /> },
           { path: "/admins", element: <AdminsPage /> },
+          { path: "/audit", element: <AuditPage /> },
         ],
       },
     ],

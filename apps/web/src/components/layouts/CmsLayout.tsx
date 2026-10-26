@@ -1,4 +1,5 @@
 import {
+  AuditOutlined,
   DashboardOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
@@ -13,6 +14,7 @@ import { UserMenu } from "@/components/layouts/UserMenu";
 const navItems = [
   { key: "/", label: "Dashboard", icon: <DashboardOutlined /> },
   { key: "/admins", label: "Admins", icon: <TeamOutlined /> },
+  { key: "/audit", label: "Audit log", icon: <AuditOutlined /> },
 ];
 
 export function CmsLayout() {
