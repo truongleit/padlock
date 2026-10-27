@@ -12,3 +12,6 @@ apps/server/.agents
 apps/server/.claude
 apps/server/.cursor
 apps/server/.devin
+.wxt
+.output
+web-ext.config.ts
