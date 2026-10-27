@@ -11,6 +11,7 @@
     "prepare": "husky",
     "dev:web": "turbo run dev --filter=web",
     "dev:server": "turbo run dev --filter=server",
+    "dev:extension": "turbo run dev --filter=extension",
     "db:generate": "pnpm --filter server db:generate",
     "db:migrate": "pnpm --filter server db:migrate",
     "db:deploy": "pnpm --filter server db:deploy",
@@ -19,7 +20,7 @@
     "db:studio": "pnpm --filter server db:studio"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.5.15",
+    "@biomejs/biome": "^2.6.3",
     "@commitlint/cli": "^21.2.3",
     "@commitlint/config-conventional": "^21.2.3",
     "husky": "^9.1.7",

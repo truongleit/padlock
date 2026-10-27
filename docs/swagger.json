@@ -163,7 +163,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/Function"
+                "$ref": "#/components/schemas/UpdateAdminDto"
               }
             }
           }
@@ -456,7 +456,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/Function"
+                "$ref": "#/components/schemas/ForgotPasswordDto"
               }
             }
           }
@@ -520,7 +520,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/Function"
+                "$ref": "#/components/schemas/ResetPasswordDto"
               }
             }
           }
@@ -1074,9 +1074,21 @@
         "type": "object",
         "properties": {}
       },
-      "Function": {
+      "UpdateAdminDto": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "DISABLED"
+            ]
+          }
+        }
       },
       "ErrorDetailDto": {
         "type": "object",
@@ -1147,6 +1159,37 @@
           "password"
         ]
       },
+      "ForgotPasswordDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
+          }
+        },
+        "required": [
+          "email"
+        ]
+      },
+      "ResetPasswordDto": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "minLength": 20,
+            "maxLength": 200
+          },
+          "newPassword": {
+            "type": "string",
+            "minLength": 12,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "token",
+          "newPassword"
+        ]
+      },
       "AuditLogDto": {
         "type": "object",
         "properties": {
@@ -1154,6 +1197,9 @@
             "type": "string"
           },
           "adminId": {
+            "type": "string"
+          },
+          "adminEmail": {
             "type": "string"
           },
           "targetUserId": {
@@ -1175,6 +1221,7 @@
         "required": [
           "id",
           "adminId",
+          "adminEmail",
           "targetUserId",
           "action",
           "createdAt"
