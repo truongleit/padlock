@@ -9,6 +9,7 @@ import { LoginPage } from "@/pages/auth/LoginPage";
 import { AdminsPage } from "@/pages/cms/AdminsPage";
 import { AuditPage } from "@/pages/cms/AuditPage";
 import { DashboardPage } from "@/pages/cms/DashboardPage";
+import { UsersPage } from "@/pages/cms/UsersPage";
 
 export const router = createBrowserRouter([
   {
@@ -30,6 +31,7 @@ export const router = createBrowserRouter([
         element: <CmsLayout />,
         children: [
           { path: "/", element: <DashboardPage /> },
+          { path: "/users", element: <UsersPage /> },
           { path: "/admins", element: <AdminsPage /> },
           { path: "/audit", element: <AuditPage /> },
         ],

@@ -4,6 +4,7 @@ import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   TeamOutlined,
+  UserOutlined,
 } from "@ant-design/icons";
 import { Button, Grid, Layout, Menu, Typography, theme } from "antd";
 import { useState } from "react";
@@ -13,6 +14,7 @@ import { UserMenu } from "@/components/layouts/UserMenu";
 
 const navItems = [
   { key: "/", label: "Dashboard", icon: <DashboardOutlined /> },
+  { key: "/users", label: "Users", icon: <UserOutlined /> },
   { key: "/admins", label: "Admins", icon: <TeamOutlined /> },
   { key: "/audit", label: "Audit log", icon: <AuditOutlined /> },
 ];
