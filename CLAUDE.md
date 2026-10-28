@@ -1,6 +1,6 @@
 # Padlock
 
-Early-stage Turborepo monorepo. Three apps: `apps/extension` (WXT + Tailwind 4 browser extension, React 19 popup + fullscreen page + background), `apps/web` (Vite + React 19 SPA, placeholder heading) and `apps/server` (NestJS 12, Postgres via Prisma 7, a hello route, an `admins` CRUD module, and admin auth + password reset + user management, mail module, rate limiting). The only Docker file is `docker-compose.yml` (local Postgres). No tests, CI, or deployment config exists yet. Don't assume any of them; add them deliberately.
+Early-stage Turborepo monorepo. Three apps: `apps/extension` (WXT + Tailwind 4 browser extension, React 19 popup + fullscreen page + background), `apps/web` (Vite + React 19 SPA, placeholder heading) and `apps/server` (NestJS 12, Postgres via Prisma 7, a hello route, an `admins` CRUD module, and admin auth + password reset + user management, mail module, rate limiting). The only Docker file is `docker-compose.yml` (local Postgres). Unit tests exist only in `apps/server`; no CI or deployment config exists yet. Don't assume any of them; add them deliberately.
 
 Specs and guides: `docs/padlock_srs.md`, `docs/padlock_database_design.md`, `guides/ADMIN_GUIDE.md` (big picture for the admin feature), `guides/ADMIN_CRUD_GUIDE.md` (step-by-step `admins` CRUD), `guides/ADMIN_AUTH_GUIDE.md` (tables + admin login/refresh/logout), `guides/ADMIN_GUARD_USERS_GUIDE.md` (JWT guard + admin users listing/disable/delete), `guides/ADMIN_RESET_THROTTLE_GUIDE.md` (forgot/reset password + rate limiting), `guides/DEPLOY_VPS_GUIDE.md` (server on a VPS), `guides/DEPLOY_WEB_GUIDE.md` (web on the same VPS; follow-up to the server guide), `guides/WEB_AUDIT_PAGE_GUIDE.md` (web audit log page: list, then filters), `guides/WEB_USERS_PAGE_GUIDE.md` (web users page: list, then search and actions).
 
@@ -21,11 +21,12 @@ Specs and guides: `docs/padlock_srs.md`, `docs/padlock_database_design.md`, `gui
 | `pnpm dev` / `pnpm dev:web` / `pnpm dev:server` / `pnpm dev:extension` | Start dev server(s) via turbo |
 | `pnpm build` | `turbo run build` (web: `tsc && vite build`, output `dist/`) |
 | `pnpm typecheck` | `turbo run typecheck` (`tsc` per workspace, `noEmit`) |
+| `pnpm test` | `turbo run test` (Vitest, `apps/server` only; needs `pnpm db:generate` first) |
 | `pnpm lint` | `biome check .` (read-only) |
 | `pnpm format` | `biome check --write .` (fix lint, format, sort imports) |
 | `pnpm db:generate` / `db:migrate` / `db:deploy` / `db:seed` / `db:reset` / `db:studio` | Prisma commands, forwarded to `apps/server` (`prisma` is only installed there, so bare `pnpm prisma ...` fails from root) |
 
-There is no test runner configured. If you add one, add a turbo `test` task and update this file.
+Server tests: Vitest + `unplugin-swc` (swc emits the decorator metadata Nest DI needs), config in `apps/server/vitest.config.ts` (`@` alias, `src/**/*.spec.ts`, `src/test/setup.ts` silences the Nest logger). Specs sit beside the code and build services directly with `createPrismaMock()` from `src/test/prisma-mock.ts` (plain-object `PrismaService`; `$transaction` passes the same mock to its callback). No DB is needed. Web and extension have no tests yet.
 
 ## Local setup
 
