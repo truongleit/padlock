@@ -7,6 +7,7 @@
     "build": "tsc --noEmit && nest build && tsc-alias -p tsconfig.json --resolve-full-paths",
     "start": "node dist/main.js",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
@@ -39,6 +40,7 @@
   },
   "devDependencies": {
     "@nestjs/cli": "^12.0.8",
+    "@swc/core": "^1.16.20",
     "@types/cookie-parser": "^1.4.10",
     "@types/express": "^5.0.6",
     "@types/node": "^26.6.3",
@@ -47,6 +49,8 @@
     "prisma": "^7.10.0",
     "tsc-alias": "^1.9.7",
     "tsx": "^4.23.15",
-    "typescript": "~6.0.3"
+    "typescript": "~6.0.3",
+    "unplugin-swc": "^2.0.0",
+    "vitest": "^5.0.5"
   }
 }
