@@ -10,4 +10,9 @@ export class ConsoleMailService extends MailService {
     this.log.log(`Reset link for ${to}: ${link}`);
     return Promise.resolve();
   }
+
+  sendUserResetCode(to: string, code: string) {
+    this.log.log(`Reset code for ${to}: ${code}`);
+    return Promise.resolve();
+  }
 }

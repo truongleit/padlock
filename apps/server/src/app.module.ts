@@ -8,6 +8,7 @@ import { AdminJwtGuard } from "@/admin/auth/admin-jwt.guard";
 import { AdminsModule } from "@/admins/admins.module";
 import { AppController } from "@/app.controller";
 import { AppService } from "@/app.service";
+import { AuthModule } from "@/auth/auth.module";
 import { AllExceptionsFilter } from "@/common/errors/all-exceptions.filter";
 import { validateEnv } from "@/config/env";
 import { PrismaModule } from "@/prisma/prisma.module";
@@ -19,6 +20,7 @@ import { PrismaModule } from "@/prisma/prisma.module";
     PrismaModule,
     AdminsModule,
     AdminModule,
+    AuthModule,
   ],
   controllers: [AppController],
   providers: [

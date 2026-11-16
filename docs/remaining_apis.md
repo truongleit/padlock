@@ -13,21 +13,25 @@ The SRS describes features, not routes, so the paths below are proposals. They f
 | Audit log | `GET /admin/audit-logs` |
 | Admins CRUD | `POST/GET /admins`, `GET/PATCH/DELETE /admins/:id` |
 
-## To implement (end-user API)
+## Implemented (end-user auth, `apps/server/src/auth/`)
 
-### Auth (FR-1, NFR-SEC-2/9/10/11)
+FR-1, NFR-SEC-2/9/10/11. All routes are public; the refresh token lives in an HTTP-only `refresh` cookie scoped to `/auth`. Byte fields are base64.
 
-| Route | Purpose |
+| Route | Behaviour |
 | --- | --- |
-| `POST /auth/register` | Create the account and its default settings. The client sends `authKey`, `kdfSalt`, `kdfParams`, both wrapped vault keys and their IVs. |
-| `POST /auth/prelogin` | Return `kdfSalt` and `kdfParams` for an email so the client can derive the auth key. Unknown emails get a fake but stable response so it doesn't reveal who is registered. |
-| `POST /auth/login` | Check the auth hash and that the account is `ACTIVE`, create a session, return the access token and wrapped keys. Sets the refresh cookie. |
+| `POST /auth/register` | Create the account from `email`, `authKey`, `kdfSalt`, `kdfParams` and both wrapped vault keys with their IVs. Stores an Argon2 hash of `authKey`. 409 `EMAIL_TAKEN` if the email exists. |
+| `POST /auth/prelogin` | Return `kdfSalt` and `kdfParams` for an email. Unknown emails get a fake but stable salt so the response doesn't reveal who is registered. |
+| `POST /auth/login` | `email`, `authKey`, `clientType` (`WEB` or `EXTENSION`). Returns the access token (`role: "user"`), KDF settings and master wrap; sets the refresh cookie. |
 | `POST /auth/refresh` | Rotate the session. |
 | `POST /auth/logout` | Revoke the session. |
-| `POST /auth/forgot-password` | Email a reset link (FR-1.4). Same response whether or not the email exists. |
-| `POST /auth/reset-password/verify` | Check the token and return `wrappedVaultKeyRecovery` and its IV so the client can unwrap with the recovery key. |
-| `POST /auth/reset-password` | Use up the token. Store the new auth hash, the new master wrap and a new recovery wrap (FR-1.5, 1.6), and revoke sessions. |
-| `POST /auth/reset-account` | Reset when both the master password and recovery key are lost: delete all vault items, replace the keys, revoke sessions (FR-1.7). Needs a valid token plus an explicit confirm flag. |
+| `POST /auth/forgot-password` | Email a one-time reset **code** (FR-1.4), not a link, since email links can't open the extension. Same response whether or not the email exists. |
+| `POST /auth/reset-password/verify` | Check the code without using it up; return `wrappedVaultKeyRecovery` and its IV for the client to unwrap with the recovery key. |
+| `POST /auth/reset-password` | Use up the code, store the new auth hash, master wrap and recovery wrap (FR-1.5, 1.6), revoke sessions. |
+| `POST /auth/reset-account` | Same, plus `confirm: true`, and deletes every vault item (FR-1.7). |
+
+Not done yet: default `user_settings` on register (the table doesn't exist), and a user JWT guard (comes with Profile/Vault).
+
+## To implement (end-user API)
 
 ### Profile (FR-11)
 

@@ -32,4 +32,13 @@ export class SmtpMailService extends MailService {
       text: `Use this link within 30 minutes to reset your password:\n\n${link}\n\nIf you did not ask for this, ignore this email.`,
     });
   }
+
+  async sendUserResetCode(to: string, code: string) {
+    await this.transport.sendMail({
+      from: this.from,
+      to,
+      subject: "Reset your Padlock master password",
+      text: `Paste this code into the Padlock extension within 30 minutes to reset your master password:\n\n${code}\n\nIf you did not ask for this, ignore this email.`,
+    });
+  }
 }
