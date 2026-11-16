@@ -6,6 +6,7 @@ const MODELS = [
   "passwordResetToken",
   "user",
   "adminAuditLog",
+  "vaultItem",
 ] as const;
 const METHODS = [
   "findUnique",
@@ -16,6 +17,7 @@ const METHODS = [
   "update",
   "updateMany",
   "delete",
+  "deleteMany",
 ] as const;
 
 type ModelMock = Record<(typeof METHODS)[number], ReturnType<typeof vi.fn>>;

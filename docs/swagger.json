@@ -1033,6 +1033,569 @@
           "AdminAuditLog"
         ]
       }
+    },
+    "/auth/register": {
+      "post": {
+        "operationId": "AuthController_register",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/auth/prelogin": {
+      "post": {
+        "operationId": "AuthController_prelogin",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreloginDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "operationId": "AuthController_login",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/auth/refresh": {
+      "post": {
+        "operationId": "AuthController_refresh",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "operationId": "AuthController_logout",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/auth/forgot-password": {
+      "post": {
+        "operationId": "AuthController_forgotPassword",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ForgotPasswordDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": ""
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/auth/reset-password/verify": {
+      "post": {
+        "operationId": "AuthController_verifyReset",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetTokenDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/auth/reset-password": {
+      "post": {
+        "operationId": "AuthController_resetPassword",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/auth/reset-account": {
+      "post": {
+        "operationId": "AuthController_resetAccount",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetAccountDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
     }
   },
   "info": {
@@ -1174,20 +1737,57 @@
       "ResetPasswordDto": {
         "type": "object",
         "properties": {
+          "kdfParams": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Opaque KDF settings, e.g. { alg: \"PBKDF2-SHA256\", iterations: 600000 }."
+          },
           "token": {
             "type": "string",
             "minLength": 20,
             "maxLength": 200
           },
-          "newPassword": {
+          "authKey": {
             "type": "string",
-            "minLength": 12,
-            "maxLength": 128
+            "description": "Key the client derives from the master password for login only. Hashed again with Argon2 here.",
+            "maxLength": 256,
+            "format": "base64"
+          },
+          "kdfSalt": {
+            "type": "string",
+            "maxLength": 256,
+            "format": "base64"
+          },
+          "wrappedVaultKeyMaster": {
+            "type": "string",
+            "maxLength": 256,
+            "format": "base64"
+          },
+          "wrapIvMaster": {
+            "type": "string",
+            "maxLength": 256,
+            "format": "base64"
+          },
+          "wrappedVaultKeyRecovery": {
+            "type": "string",
+            "maxLength": 256,
+            "format": "base64"
+          },
+          "wrapIvRecovery": {
+            "type": "string",
+            "maxLength": 256,
+            "format": "base64"
           }
         },
         "required": [
+          "kdfParams",
           "token",
-          "newPassword"
+          "authKey",
+          "kdfSalt",
+          "wrappedVaultKeyMaster",
+          "wrapIvMaster",
+          "wrappedVaultKeyRecovery",
+          "wrapIvRecovery"
         ]
       },
       "AuditLogDto": {
@@ -1251,6 +1851,173 @@
           "page",
           "limit",
           "total"
+        ]
+      },
+      "RegisterDto": {
+        "type": "object",
+        "properties": {
+          "kdfParams": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Opaque KDF settings, e.g. { alg: \"PBKDF2-SHA256\", iterations: 600000 }."
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "authKey": {
+            "type": "string",
+            "description": "Key the client derives from the master password for login only. Hashed again with Argon2 here.",
+            "maxLength": 256,
+            "format": "base64"
+          },
+          "kdfSalt": {
+            "type": "string",
+            "maxLength": 256,
+            "format": "base64"
+          },
+          "wrappedVaultKeyMaster": {
+            "type": "string",
+            "maxLength": 256,
+            "format": "base64"
+          },
+          "wrapIvMaster": {
+            "type": "string",
+            "maxLength": 256,
+            "format": "base64"
+          },
+          "wrappedVaultKeyRecovery": {
+            "type": "string",
+            "maxLength": 256,
+            "format": "base64"
+          },
+          "wrapIvRecovery": {
+            "type": "string",
+            "maxLength": 256,
+            "format": "base64"
+          }
+        },
+        "required": [
+          "kdfParams",
+          "email",
+          "authKey",
+          "kdfSalt",
+          "wrappedVaultKeyMaster",
+          "wrapIvMaster",
+          "wrappedVaultKeyRecovery",
+          "wrapIvRecovery"
+        ]
+      },
+      "PreloginDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
+          }
+        },
+        "required": [
+          "email"
+        ]
+      },
+      "LoginDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "authKey": {
+            "type": "string",
+            "maxLength": 256,
+            "format": "base64"
+          },
+          "clientType": {
+            "type": "string",
+            "enum": [
+              "WEB",
+              "EXTENSION"
+            ]
+          }
+        },
+        "required": [
+          "email",
+          "authKey",
+          "clientType"
+        ]
+      },
+      "ResetTokenDto": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "minLength": 20,
+            "maxLength": 200
+          }
+        },
+        "required": [
+          "token"
+        ]
+      },
+      "ResetAccountDto": {
+        "type": "object",
+        "properties": {
+          "kdfParams": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Opaque KDF settings, e.g. { alg: \"PBKDF2-SHA256\", iterations: 600000 }."
+          },
+          "token": {
+            "type": "string",
+            "minLength": 20,
+            "maxLength": 200
+          },
+          "authKey": {
+            "type": "string",
+            "description": "Key the client derives from the master password for login only. Hashed again with Argon2 here.",
+            "maxLength": 256,
+            "format": "base64"
+          },
+          "kdfSalt": {
+            "type": "string",
+            "maxLength": 256,
+            "format": "base64"
+          },
+          "wrappedVaultKeyMaster": {
+            "type": "string",
+            "maxLength": 256,
+            "format": "base64"
+          },
+          "wrapIvMaster": {
+            "type": "string",
+            "maxLength": 256,
+            "format": "base64"
+          },
+          "wrappedVaultKeyRecovery": {
+            "type": "string",
+            "maxLength": 256,
+            "format": "base64"
+          },
+          "wrapIvRecovery": {
+            "type": "string",
+            "maxLength": 256,
+            "format": "base64"
+          },
+          "confirm": {
+            "type": "boolean",
+            "description": "Must be true: the user confirmed that every vault item is deleted."
+          }
+        },
+        "required": [
+          "kdfParams",
+          "token",
+          "authKey",
+          "kdfSalt",
+          "wrappedVaultKeyMaster",
+          "wrapIvMaster",
+          "wrappedVaultKeyRecovery",
+          "wrapIvRecovery",
+          "confirm"
         ]
       }
     }
