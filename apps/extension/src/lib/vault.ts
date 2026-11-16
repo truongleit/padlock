@@ -1,20 +1,20 @@
-// Local vault store. Mirrors the server tables (users, user_settings, vault_items) so a
-// sync API can take these records as-is.
-// ponytail: no user endpoints exist yet (signup, login, vault sync, settings sync);
-// everything lives in browser.storage until they do.
+// Vault store. Account and auth go through the server (/auth, /me); the cached account
+// lets the vault unlock locally without a round trip.
+// ponytail: vault items and settings are still local only (phases 2 and 3 of
+// docs/extension_api_integration.md), so logging out drops this device's items.
+import { ApiError, api, refresh, tokenStore } from "@/lib/api";
 import {
   createAccount,
   decryptItem,
+  deriveMaster,
   type EncryptedItem,
   encryptItem,
   fromB64,
+  type KdfParams,
   type MasterWrap,
-  type RecoveryWrap,
   toB64,
-  unwrapWithMaster,
-  unwrapWithRecovery,
+  unwrapVaultKey,
   wrapMaster,
-  wrapRecovery,
 } from "@/lib/crypto";
 
 export type Settings = {
@@ -24,8 +24,11 @@ export type Settings = {
 };
 
 export type Account = {
+  /** 2 = registered on the server. Older local-only accounts are discarded on load. */
+  v: 2;
   email: string;
-  keys: MasterWrap & RecoveryWrap;
+  /** The recovery wrap stays on the server; reset fetches it. */
+  keys: MasterWrap;
   settings: Settings;
   createdAt: string;
   updatedAt: string;
@@ -94,7 +97,10 @@ export async function loadVault(): Promise<VaultState> {
     sessionStore.getValue(),
     itemsStore.getValue(),
   ]);
-  if (!account) return { status: "none", account, items: [], vaultKey: null };
+  if (account?.v !== 2) {
+    if (account) await clearDevice();
+    return { status: "none", account: null, items: [], vaultKey: null };
+  }
   if (!session || isIdle(session, account)) {
     if (session) await sessionStore.removeValue();
     return { status: "locked", account, items: [], vaultKey: null };
@@ -123,26 +129,107 @@ async function requireAccount() {
   return account;
 }
 
-/** FR-1.1, FR-1.3. Returns the recovery key, shown once. */
-export async function signup(email: string, master: string) {
-  const { vaultKey, recoveryKey, keys } = await createAccount(master);
+const clearDevice = () =>
+  Promise.all([
+    accountStore.removeValue(),
+    itemsStore.removeValue(),
+    sessionStore.removeValue(),
+    tokenStore.removeValue(),
+  ]);
+
+type LoginResponse = MasterWrap & { accessToken: string };
+
+async function serverLogin(email: string, authKey: string) {
+  const res = await api<LoginResponse>("POST", "auth/login", {
+    email,
+    authKey,
+    clientType: "EXTENSION",
+  });
+  await tokenStore.setValue(res.accessToken);
+  return res;
+}
+
+async function saveAccount(email: string, keys: MasterWrap) {
   const now = new Date().toISOString();
+  const prev = await accountStore.getValue();
   await accountStore.setValue({
+    v: 2,
     email,
     keys,
-    settings: DEFAULT_SETTINGS,
-    createdAt: now,
+    settings: prev?.email === email ? prev.settings : DEFAULT_SETTINGS,
+    createdAt: prev?.email === email ? prev.createdAt : now,
     updatedAt: now,
   });
+}
+
+/** FR-1.1, FR-1.3. Registers, logs in, and returns the recovery key, shown once. */
+export async function signup(email: string, master: string) {
+  const { vaultKey, recoveryKey, authKey, keys } = await createAccount(master);
+  await api("POST", "auth/register", { email, authKey, ...keys });
+  await serverLogin(email, authKey);
   await itemsStore.setValue([]);
+  // Session first, so the app never sees the account in a "locked" state.
   await startSession(vaultKey);
+  await saveAccount(email, {
+    kdfSalt: keys.kdfSalt,
+    kdfParams: keys.kdfParams,
+    wrappedVaultKeyMaster: keys.wrappedVaultKeyMaster,
+    wrapIvMaster: keys.wrapIvMaster,
+  });
   return recoveryKey;
 }
 
-/** FR-9.2. Throws on a wrong master password. */
+/** FR-1.2. Full login on a device with no (or another) account. */
+export async function login(email: string, master: string) {
+  const { kdfSalt, kdfParams } = await api<{
+    kdfSalt: string;
+    kdfParams: KdfParams;
+  }>("POST", "auth/prelogin", { email });
+  const { wrapKey, authKey } = await deriveMaster(master, kdfSalt, kdfParams);
+  const res = await serverLogin(email, authKey);
+  const keys: MasterWrap = {
+    kdfSalt: res.kdfSalt,
+    kdfParams: res.kdfParams,
+    wrappedVaultKeyMaster: res.wrappedVaultKeyMaster,
+    wrapIvMaster: res.wrapIvMaster,
+  };
+  const vaultKey = await unwrapVaultKey(wrapKey, keys);
+  const prev = await accountStore.getValue();
+  if (prev?.email !== email) await itemsStore.setValue([]);
+  await startSession(vaultKey);
+  await saveAccount(email, keys);
+}
+
+/**
+ * FR-9.2. Unlocks from the cached master wrap, so it works offline, then renews the
+ * server session in the background (refresh cookie first, else a fresh login).
+ */
 export async function unlock(master: string) {
   const account = await requireAccount();
-  await startSession(await unwrapWithMaster(account.keys, master));
+  const { wrapKey, authKey } = await deriveMaster(
+    master,
+    account.keys.kdfSalt,
+    account.keys.kdfParams
+  );
+  await startSession(await unwrapVaultKey(wrapKey, account.keys));
+  void renewSession(account.email, authKey);
+}
+
+async function renewSession(email: string, authKey: string) {
+  try {
+    if (!(await refresh(await tokenStore.getValue())))
+      await serverLogin(email, authKey);
+  } catch (e) {
+    // 401: the master password changed elsewhere or the account is disabled; the
+    // cached wrap is stale, so make the user log in again. Network errors: stay offline.
+    if (e instanceof ApiError && e.status === 401) await clearDevice();
+  }
+}
+
+/** Ends the server session and forgets this device's account. */
+export async function logout() {
+  await api("POST", "auth/logout").catch(() => {});
+  await clearDevice();
 }
 
 export const lock = () => sessionStore.removeValue();
@@ -186,47 +273,41 @@ export async function deleteCredential(id: string) {
   await itemsStore.setValue(items.filter((i) => i.id !== id));
 }
 
-async function rekey(
-  account: Account,
-  vaultKey: Uint8Array<ArrayBuffer>,
-  master: string
-) {
-  const { wrap, recoveryKey } = await wrapRecovery(vaultKey);
-  await accountStore.setValue({
-    ...account,
-    keys: { ...(await wrapMaster(vaultKey, master)), ...wrap },
-    updatedAt: new Date().toISOString(),
-  });
-  await startSession(vaultKey);
-  return recoveryKey;
+// ponytail: the reset flow needs the server's emailed code (phase 4 of
+// docs/extension_api_integration.md); a local-only reset would desync the server's auth key.
+const RESET_PENDING = "Password reset isn't connected to the server yet.";
+
+/** FR-1.5, FR-1.6. */
+export function resetWithRecovery(_recoveryKey: string, _master: string) {
+  return Promise.reject<string>(new Error(RESET_PENDING));
 }
 
-/** FR-1.5, FR-1.6: unwrap with the recovery key, set a new master, issue a new recovery key. */
-export async function resetWithRecovery(recoveryKey: string, master: string) {
-  const account = await requireAccount();
-  return rekey(
-    account,
-    await unwrapWithRecovery(account.keys, recoveryKey),
-    master
-  );
+/** FR-1.7. */
+export function resetAccount(_master: string) {
+  return Promise.reject<string>(new Error(RESET_PENDING));
 }
 
-/** FR-1.7: both secrets lost. Deletes every credential and starts a fresh vault. */
-export async function resetAccount(master: string) {
-  const account = await requireAccount();
-  await itemsStore.setValue([]);
-  return rekey(account, crypto.getRandomValues(new Uint8Array(32)), master);
-}
-
-/** FR-11.2: only the master wrap changes; items and the recovery key stay. */
+/**
+ * FR-11.2: re-wraps the vault key under the new master. The server revokes every
+ * session, so this logs straight back in with the new auth key.
+ */
 export async function changeMaster(current: string, next: string) {
   const account = await requireAccount();
-  const vaultKey = await unwrapWithMaster(account.keys, current);
-  await accountStore.setValue({
-    ...account,
-    keys: { ...account.keys, ...(await wrapMaster(vaultKey, next)) },
-    updatedAt: new Date().toISOString(),
+  const cur = await deriveMaster(
+    current,
+    account.keys.kdfSalt,
+    account.keys.kdfParams
+  );
+  const vaultKey = await unwrapVaultKey(cur.wrapKey, account.keys);
+  const { wrap, authKey } = await wrapMaster(vaultKey, next);
+  await api("PATCH", "me/master-password", {
+    currentAuthKey: cur.authKey,
+    authKey,
+    ...wrap,
   });
+  await tokenStore.removeValue();
+  await serverLogin(account.email, authKey);
+  await saveAccount(account.email, wrap);
 }
 
 export async function saveSettings(settings: Settings) {

@@ -1,5 +1,6 @@
 import { Mail } from "lucide-react";
 import { type FormEvent, useState } from "react";
+import { Link } from "react-router";
 
 import { BackLink } from "@/components/AppLayout";
 import { AuthHeader, AuthLayout } from "@/components/AuthLayout";
@@ -61,12 +62,12 @@ export function ForgotPasswordPage() {
               <p>If that email is registered, a reset link is on its way.</p>
             </Note>
             <Button asChild block>
-              <a href="#/reset">Continue with my recovery key</a>
+              <Link to="/reset">Continue with my recovery key</Link>
             </Button>
           </>
         )}
       </form>
-      <BackLink href="#/login">Back to log in</BackLink>
+      <BackLink to="/login">Back to log in</BackLink>
     </AuthLayout>
   );
 }

@@ -50,25 +50,54 @@ async function open(key: CryptoKey, ciphertext: string, iv: string) {
   return new Uint8Array(pt);
 }
 
-async function masterKey(
+/**
+ * One PBKDF2 run, split with HKDF (NFR-SEC-2): `wrapKey` wraps the vault key and never
+ * leaves the device; `authKey` is what the server hashes to check a login.
+ */
+export async function deriveMaster(
   master: string,
-  salt: Uint8Array<ArrayBuffer>,
+  kdfSalt: string,
   p: KdfParams
 ) {
+  // Trust boundary: prelogin params come from the server; refuse a weakened KDF.
+  if (p.alg !== DEFAULT_KDF.alg || !(p.iterations >= DEFAULT_KDF.iterations))
+    throw new Error("Unsupported KDF parameters");
   const base = await crypto.subtle.importKey(
     "raw",
     encoder.encode(master),
     "PBKDF2",
     false,
-    ["deriveKey"]
+    ["deriveBits"]
   );
-  return crypto.subtle.deriveKey(
-    { name: "PBKDF2", hash: "SHA-256", salt, iterations: p.iterations },
+  const bits = await crypto.subtle.deriveBits(
+    {
+      name: "PBKDF2",
+      hash: "SHA-256",
+      salt: fromB64(kdfSalt),
+      iterations: p.iterations,
+    },
     base,
+    256
+  );
+  const hkdf = await crypto.subtle.importKey("raw", bits, "HKDF", false, [
+    "deriveKey",
+    "deriveBits",
+  ]);
+  const info = (label: string) => ({
+    name: "HKDF",
+    hash: "SHA-256",
+    salt: new Uint8Array(),
+    info: encoder.encode(label),
+  });
+  const wrapKey = await crypto.subtle.deriveKey(
+    info("padlock-wrap"),
+    hkdf,
     { name: "AES-GCM", length: 256 },
     false,
     ["encrypt", "decrypt"]
   );
+  const auth = await crypto.subtle.deriveBits(info("padlock-auth"), hkdf, 256);
+  return { wrapKey, authKey: toB64(new Uint8Array(auth)) };
 }
 
 function toBase32(bytes: Uint8Array) {
@@ -117,16 +146,17 @@ async function recoveryWrapKey(recoveryKey: string) {
 export async function wrapMaster(
   vaultKey: Uint8Array<ArrayBuffer>,
   master: string
-): Promise<MasterWrap> {
-  const salt = random(16);
-  const key = await masterKey(master, salt, DEFAULT_KDF);
-  const { ciphertext, iv } = await seal(key, vaultKey);
-  return {
-    kdfSalt: toB64(salt),
+): Promise<{ wrap: MasterWrap; authKey: string }> {
+  const kdfSalt = toB64(random(16));
+  const { wrapKey, authKey } = await deriveMaster(master, kdfSalt, DEFAULT_KDF);
+  const { ciphertext, iv } = await seal(wrapKey, vaultKey);
+  const wrap: MasterWrap = {
+    kdfSalt,
     kdfParams: DEFAULT_KDF,
     wrappedVaultKeyMaster: ciphertext,
     wrapIvMaster: iv,
   };
+  return { wrap, authKey };
 }
 
 /** New recovery key + wrap. Called at sign-up and after every reset (FR-1.6). */
@@ -145,18 +175,19 @@ export async function wrapRecovery(vaultKey: Uint8Array<ArrayBuffer>) {
 
 export async function createAccount(master: string) {
   const vaultKey = random(32);
-  const { wrap, recoveryKey } = await wrapRecovery(vaultKey);
-  return {
-    vaultKey,
-    recoveryKey,
-    keys: { ...(await wrapMaster(vaultKey, master)), ...wrap },
-  };
+  const { wrap: recovery, recoveryKey } = await wrapRecovery(vaultKey);
+  const { wrap, authKey } = await wrapMaster(vaultKey, master);
+  return { vaultKey, recoveryKey, authKey, keys: { ...wrap, ...recovery } };
 }
 
 /** Throws when the master password is wrong (AES-GCM auth fails). */
+export const unwrapVaultKey = (wrapKey: CryptoKey, w: MasterWrap) =>
+  open(wrapKey, w.wrappedVaultKeyMaster, w.wrapIvMaster);
+
+/** Throws when the master password is wrong (AES-GCM auth fails). */
 export async function unwrapWithMaster(w: MasterWrap, master: string) {
-  const key = await masterKey(master, fromB64(w.kdfSalt), w.kdfParams);
-  return open(key, w.wrappedVaultKeyMaster, w.wrapIvMaster);
+  const { wrapKey } = await deriveMaster(master, w.kdfSalt, w.kdfParams);
+  return unwrapVaultKey(wrapKey, w);
 }
 
 export async function unwrapWithRecovery(w: RecoveryWrap, recoveryKey: string) {

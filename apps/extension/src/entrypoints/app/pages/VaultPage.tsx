@@ -9,6 +9,7 @@ import {
   X,
 } from "lucide-react";
 import { type ReactNode, useState } from "react";
+import { Link } from "react-router";
 
 import { AppLayout } from "@/components/AppLayout";
 import { CredentialRow, List } from "@/components/CredentialRow";
@@ -23,33 +24,33 @@ import { cn } from "@/lib/utils";
 const PAGE_SIZE = 20;
 
 function Chip({
-  href,
+  to,
   tone,
   children,
 }: {
-  href: string;
+  to: string;
   tone: "ok" | "warn" | "bad";
   children: ReactNode;
 }) {
   return (
-    <a
+    <Link
       className={cn(
         "border-border bg-surface inline-flex min-h-8 items-center gap-1.5 rounded-full border px-3 text-[13px] font-medium text-neutral-800 no-underline hover:bg-neutral-50 [&_svg]:size-3.5",
         tone === "ok" && "[&_svg]:text-success-700",
         tone === "warn" && "[&_svg]:text-warning-700",
         tone === "bad" && "[&_svg]:text-error-700"
       )}
-      href={href}
+      to={to}
     >
       {children}
-    </a>
+    </Link>
   );
 }
 
 let bannerDismissed = false;
 
 /** W-07, with the W-13 expiry banner (FR-6.3). */
-export function VaultPage({ path }: { path: string }) {
+export function VaultPage() {
   const { items } = useVault();
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(0);
@@ -69,7 +70,7 @@ export function VaultPage({ path }: { path: string }) {
   const soonest = health.expiring[0];
 
   return (
-    <AppLayout path={path}>
+    <AppLayout>
       <PageHead
         description={`${items.length} credential${items.length === 1 ? "" : "s"}, encrypted on this device.`}
         title="Vault"
@@ -89,7 +90,7 @@ export function VaultPage({ path }: { path: string }) {
                 : `has ${formatDays(daysUntil(soonest.expiresAt))} left.`}
             </p>
             <Button asChild size="sm" variant="secondary">
-              <a href={`#/vault/${soonest.id}/rotate`}>Change</a>
+              <Link to={`/vault/${soonest.id}/rotate`}>Change</Link>
             </Button>
           </div>
           <Button
@@ -126,27 +127,27 @@ export function VaultPage({ path }: { path: string }) {
           />
         </div>
         <Button asChild>
-          <a href="#/vault/new">
+          <Link to="/vault/new">
             <Plus aria-hidden />
             Add credential
-          </a>
+          </Link>
         </Button>
       </div>
 
       {items.length > 0 && (
         <div className="mb-5 flex flex-wrap gap-2">
-          <Chip href="#/security" tone="ok">
+          <Chip to="/security" tone="ok">
             <ShieldCheck aria-hidden />
             Security score {health.score}
           </Chip>
           {health.reused.size > 0 && (
-            <Chip href="#/security" tone="bad">
+            <Chip to="/security" tone="bad">
               <TriangleAlert aria-hidden />
               {health.reused.size} reused
             </Chip>
           )}
           {health.expiring.length > 0 && (
-            <Chip href="#/security" tone="warn">
+            <Chip to="/security" tone="warn">
               <Clock aria-hidden />
               {health.expiring.length} expiring soon
             </Chip>

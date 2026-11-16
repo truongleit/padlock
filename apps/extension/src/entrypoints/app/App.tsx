@@ -1,3 +1,12 @@
+import {
+  createHashRouter,
+  Navigate,
+  Outlet,
+  RouterProvider,
+  useLocation,
+  useParams,
+} from "react-router";
+
 import { useVault } from "@/components/VaultProvider";
 import { CredentialDetailPage } from "@/entrypoints/app/pages/CredentialDetailPage";
 import { CredentialFormPage } from "@/entrypoints/app/pages/CredentialFormPage";
@@ -12,58 +21,76 @@ import { SecurityPage } from "@/entrypoints/app/pages/SecurityPage";
 import { SettingsPage } from "@/entrypoints/app/pages/SettingsPage";
 import { SignupPage } from "@/entrypoints/app/pages/SignupPage";
 import { VaultPage } from "@/entrypoints/app/pages/VaultPage";
-import { useHashPath, useRedirect } from "@/lib/router";
 
-const LOCKED_ROUTES = ["/login", "/forgot", "/reset", "/recovery-key"];
+/** Waits for the vault state so guards never redirect on the initial "loading". */
+function Root() {
+  return useVault().status === "loading" ? null : <Outlet />;
+}
 
-/** Hash routes; locked and unlocked screens are separate so nothing leaks while locked. */
+/** Login, sign-up and reset screens. Forgot/reset need an account on this device (phase 4 lifts that). */
+function SignedOut() {
+  const { status } = useVault();
+  const { pathname } = useLocation();
+  if (status === "unlocked") return <Navigate replace to="/vault" />;
+  if (status === "none" && (pathname === "/forgot" || pathname === "/reset"))
+    return <Navigate replace to="/signup" />;
+  if (status === "locked" && pathname === "/signup")
+    return <Navigate replace to="/login" />;
+  return <Outlet />;
+}
+
+/** Everything that shows vault data; nothing renders while locked. */
+function Unlocked() {
+  const { status } = useVault();
+  if (status === "none") return <Navigate replace to="/signup" />;
+  if (status === "locked") return <Navigate replace to="/login" />;
+  return <Outlet />;
+}
+
+function ItemRoute({ view }: { view: "detail" | "edit" | "rotate" }) {
+  const { id } = useParams();
+  const item = useVault().items.find((i) => i.id === id);
+  if (!item) return <Navigate replace to="/vault" />;
+  if (view === "edit")
+    return <CredentialFormPage existing={item} key={item.id} />;
+  if (view === "rotate") return <RotatePasswordPage item={item} />;
+  return <CredentialDetailPage item={item} />;
+}
+
+const router = createHashRouter([
+  {
+    element: <Root />,
+    children: [
+      {
+        element: <SignedOut />,
+        children: [
+          { path: "login", element: <LoginPage /> },
+          { path: "signup", element: <SignupPage /> },
+          { path: "forgot", element: <ForgotPasswordPage /> },
+          { path: "reset", element: <ResetPasswordPage /> },
+        ],
+      },
+      // Any status: sign-up and reset land here right as the vault unlocks.
+      { path: "recovery-key", element: <RecoveryKeyPage /> },
+      {
+        element: <Unlocked />,
+        children: [
+          { path: "vault", element: <VaultPage /> },
+          { path: "vault/new", element: <CredentialFormPage /> },
+          { path: "vault/:id", element: <ItemRoute view="detail" /> },
+          { path: "vault/:id/edit", element: <ItemRoute view="edit" /> },
+          { path: "vault/:id/rotate", element: <ItemRoute view="rotate" /> },
+          { path: "generator", element: <GeneratorPage /> },
+          { path: "generator/interview", element: <InterviewPage /> },
+          { path: "security", element: <SecurityPage /> },
+          { path: "settings", element: <SettingsPage /> },
+        ],
+      },
+      { path: "*", element: <Navigate replace to="/vault" /> },
+    ],
+  },
+]);
+
 export function App() {
-  const { status, items } = useVault();
-  const path = useHashPath();
-  const [, section, id, action] = path.split("/");
-  const fallback =
-    status === "none"
-      ? // signup navigates here before the storage watcher reports "unlocked"
-        path === "/signup" || path === "/recovery-key"
-        ? null
-        : "/signup"
-      : status === "locked"
-        ? LOCKED_ROUTES.includes(path)
-          ? null
-          : "/login"
-        : status === "unlocked" &&
-            LOCKED_ROUTES.slice(0, 3).concat("/signup", "/").includes(path)
-          ? "/vault"
-          : null;
-  useRedirect(fallback !== null, fallback ?? "");
-
-  if (status === "loading" || fallback) return null;
-  if (path === "/recovery-key") return <RecoveryKeyPage />;
-  if (status === "none") return <SignupPage />;
-  if (status === "locked") {
-    if (path === "/forgot") return <ForgotPasswordPage />;
-    if (path === "/reset") return <ResetPasswordPage />;
-    return <LoginPage />;
-  }
-
-  if (section === "generator")
-    return id === "interview" ? (
-      <InterviewPage path={path} />
-    ) : (
-      <GeneratorPage path={path} />
-    );
-  if (section === "security") return <SecurityPage path={path} />;
-  if (section === "settings") return <SettingsPage path={path} />;
-  if (section === "vault" && id === "new")
-    return <CredentialFormPage path={path} />;
-  const item =
-    section === "vault" && id ? items.find((i) => i.id === id) : undefined;
-  if (item) {
-    if (action === "edit")
-      return <CredentialFormPage existing={item} key={item.id} path={path} />;
-    if (action === "rotate")
-      return <RotatePasswordPage item={item} path={path} />;
-    return <CredentialDetailPage item={item} path={path} />;
-  }
-  return <VaultPage path={path} />;
+  return <RouterProvider router={router} />;
 }

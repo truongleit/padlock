@@ -1,5 +1,6 @@
 import { Check, Clock, TriangleAlert } from "lucide-react";
 import type { ComponentProps } from "react";
+import { Link } from "react-router";
 
 import { Badge } from "@/components/ui/badge";
 import type { ItemStatus } from "@/lib/health";
@@ -53,9 +54,9 @@ export function CredentialRow({
   status: ItemStatus;
 }) {
   return (
-    <a
+    <Link
       className="border-border grid min-h-[68px] grid-cols-[40px_minmax(0,1fr)_auto] items-center gap-3.5 border-t px-[18px] py-3 text-inherit no-underline first:border-t-0 hover:bg-neutral-50"
-      href={`#/vault/${item.id}`}
+      to={`/vault/${item.id}`}
     >
       <Favicon name={item.site} />
       <div className="min-w-0">
@@ -67,6 +68,6 @@ export function CredentialRow({
         </div>
       </div>
       <StatusBadge status={status} />
-    </a>
+    </Link>
   );
 }
