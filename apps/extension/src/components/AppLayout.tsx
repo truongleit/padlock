@@ -9,6 +9,8 @@ import { Link, NavLink } from "react-router";
 
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
+import { Note } from "@/components/ui/note";
+import { useVault } from "@/components/VaultProvider";
 import { cn } from "@/lib/utils";
 import { lock } from "@/lib/vault";
 
@@ -18,6 +20,16 @@ const NAV = [
   { to: "/security", label: "Security", Icon: ShieldCheck },
   { to: "/settings", label: "Settings", Icon: SlidersHorizontal },
 ];
+
+/** Shown while the last items sync failed (popup and app). */
+export function OfflineNote({ className }: { className?: string }) {
+  if (!useVault().offline) return null;
+  return (
+    <Note className={className} role="status" tone="warn">
+      <p>Offline: showing your saved copy. Changes need a connection.</p>
+    </Note>
+  );
+}
 
 /** Top bar + centred page column for unlocked screens. */
 export function AppLayout({
@@ -55,6 +67,7 @@ export function AppLayout({
           className
         )}
       >
+        <OfflineNote className="mb-6" />
         {children}
       </main>
     </div>

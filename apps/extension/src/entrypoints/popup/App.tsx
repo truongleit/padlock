@@ -12,6 +12,7 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import type { z } from "zod";
 
+import { OfflineNote } from "@/components/AppLayout";
 import { Favicon } from "@/components/CredentialRow";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
@@ -206,6 +207,7 @@ function Unlocked() {
 
   return (
     <>
+      <OfflineNote />
       <section aria-labelledby="matches">
         <h2
           className="text-muted-foreground mb-1 text-[13px] font-medium"
