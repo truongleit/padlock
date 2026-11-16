@@ -1,7 +1,7 @@
 // Vault store. Account and auth go through the server (/auth, /me); the cached account
-// lets the vault unlock locally without a round trip.
-// ponytail: vault items and settings are still local only (phases 2 and 3 of
-// docs/extension_api_integration.md), so logging out drops this device's items.
+// lets the vault unlock locally without a round trip. Items sync with /vault/items, and
+// `itemsStore` is their encrypted offline cache.
+// ponytail: settings are still local only (phase 3 of docs/extension_api_integration.md).
 import { ApiError, api, refresh, tokenStore } from "@/lib/api";
 import {
   createAccount,
@@ -51,11 +51,15 @@ type CredentialData = CredentialInput & {
 
 export type Credential = CredentialData & { id: string; updatedAt: string };
 
-type StoredItem = EncryptedItem & {
+/** One `vault_items` row, as the server returns it. */
+type ServerItem = EncryptedItem & {
   id: string;
   createdAt: string;
   updatedAt: string;
 };
+
+/** `synced` marks rows the server has; phase-1 builds wrote rows without it. */
+export type StoredItem = ServerItem & { synced?: true };
 
 type Session = { vaultKey: string; lastActiveAt: number };
 
@@ -72,6 +76,11 @@ export const accountStore = storage.defineItem<Account | null>(
 export const itemsStore = storage.defineItem<StoredItem[]>("local:vaultItems", {
   fallback: [],
 });
+/** Whether the last server call for items failed; the UI then shows the cache read-only. */
+export const syncStore = storage.defineItem<{ offline: boolean }>(
+  "session:sync",
+  { fallback: { offline: false } }
+);
 // storage.session is memory-only and shared by the popup and the app page.
 export const sessionStore = storage.defineItem<Session | null>(
   "session:unlock",
@@ -134,6 +143,7 @@ const clearDevice = () =>
     accountStore.removeValue(),
     itemsStore.removeValue(),
     sessionStore.removeValue(),
+    syncStore.removeValue(),
     tokenStore.removeValue(),
   ]);
 
@@ -176,6 +186,7 @@ export async function signup(email: string, master: string) {
     wrappedVaultKeyMaster: keys.wrappedVaultKeyMaster,
     wrapIvMaster: keys.wrapIvMaster,
   });
+  await syncStore.removeValue();
   return recoveryKey;
 }
 
@@ -198,6 +209,7 @@ export async function login(email: string, master: string) {
   if (prev?.email !== email) await itemsStore.setValue([]);
   await startSession(vaultKey);
   await saveAccount(email, keys);
+  await pullItems();
 }
 
 /**
@@ -212,7 +224,8 @@ export async function unlock(master: string) {
     account.keys.kdfParams
   );
   await startSession(await unwrapVaultKey(wrapKey, account.keys));
-  void renewSession(account.email, authKey);
+  // Pull after renewing, so it runs with a fresh token.
+  void renewSession(account.email, authKey).then(pullItems);
 }
 
 async function renewSession(email: string, authKey: string) {
@@ -243,6 +256,37 @@ export async function touch() {
   if (s) await sessionStore.setValue({ ...s, lastActiveAt: lastTouch });
 }
 
+/** Pull and writes take this lock, so a pull can't overwrite a write that landed mid-GET. */
+const withItemsLock = <T>(fn: () => Promise<T>) =>
+  navigator.locks.request("padlock-items", fn);
+
+const synced = (row: ServerItem): StoredItem => ({ ...row, synced: true });
+
+/**
+ * Replaces the cache with the server's items. Never throws: on failure it flags
+ * `offline` and keeps the cache, so the vault stays readable.
+ */
+export function pullItems() {
+  return withItemsLock(async () => {
+    try {
+      const server = await api<ServerItem[]>("GET", "vault/items");
+      // ponytail: one-off upload of items made on the phase-1 build (local only, no
+      // `synced`). Delete once no phase-1 installs are left.
+      const local = (await itemsStore.getValue()).filter((i) => !i.synced);
+      const uploaded = await Promise.all(
+        local.map(({ ciphertext, iv, encVersion }) =>
+          api<ServerItem>("POST", "vault/items", { ciphertext, iv, encVersion })
+        )
+      );
+      await itemsStore.setValue([...server, ...uploaded].map(synced));
+      await syncStore.setValue({ offline: false });
+    } catch {
+      await syncStore.setValue({ offline: true });
+    }
+  });
+}
+
+/** Encrypts and stores one credential on the server; returns its server id. */
 export async function saveCredential(
   vaultKey: Uint8Array<ArrayBuffer>,
   input: CredentialInput,
@@ -255,22 +299,37 @@ export async function saveCredential(
       ? existing.passwordChangedAt
       : now;
   const data: CredentialData = { ...input, passwordChangedAt, createdAt };
-  const row: StoredItem = {
-    id: existing?.id ?? crypto.randomUUID(),
-    ...(await encryptItem(vaultKey, data)),
-    createdAt,
-    updatedAt: now,
-  };
-  const items = await itemsStore.getValue();
-  await itemsStore.setValue(
-    existing ? items.map((i) => (i.id === row.id ? row : i)) : [...items, row]
-  );
-  return row.id;
+  const body = await encryptItem(vaultKey, data);
+  try {
+    return await withItemsLock(async () => {
+      const row = synced(
+        existing
+          ? await api<ServerItem>("PUT", `vault/items/${existing.id}`, body)
+          : await api<ServerItem>("POST", "vault/items", body)
+      );
+      const items = await itemsStore.getValue();
+      await itemsStore.setValue(
+        existing
+          ? items.map((i) => (i.id === row.id ? row : i))
+          : [...items, row]
+      );
+      return row.id;
+    });
+  } catch (e) {
+    // Deleted on another device: refresh the list so the UI drops it.
+    if (e instanceof ApiError && e.status === 404) void pullItems();
+    throw e;
+  }
 }
 
-export async function deleteCredential(id: string) {
-  const items = await itemsStore.getValue();
-  await itemsStore.setValue(items.filter((i) => i.id !== id));
+export function deleteCredential(id: string) {
+  return withItemsLock(async () => {
+    await api("DELETE", `vault/items/${id}`).catch((e: unknown) => {
+      if (!(e instanceof ApiError && e.status === 404)) throw e; // already gone
+    });
+    const items = await itemsStore.getValue();
+    await itemsStore.setValue(items.filter((i) => i.id !== id));
+  });
 }
 
 // ponytail: the reset flow needs the server's emailed code (phase 4 of
