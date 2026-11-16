@@ -55,8 +55,20 @@ model User {
   vaultItems              VaultItem[]
   sessions                Session[]
   resetTokens             PasswordResetToken[]
+  settings                UserSettings?
 
   @@map("users")
+}
+
+model UserSettings {
+  userId                String   @id @map("user_id") @db.Uuid
+  autoLockMinutes       Int      @default(5) @map("auto_lock_minutes")
+  clipboardClearSeconds Int      @default(30) @map("clipboard_clear_seconds")
+  generatorDefaults     Json     @default("{\"length\": 16, \"symbols\": true, \"numbers\": true}") @map("generator_defaults")
+  updatedAt             DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_settings")
 }
 
 model VaultItem {

@@ -11,7 +11,9 @@ import { AppService } from "@/app.service";
 import { AuthModule } from "@/auth/auth.module";
 import { AllExceptionsFilter } from "@/common/errors/all-exceptions.filter";
 import { validateEnv } from "@/config/env";
+import { MeModule } from "@/me/me.module";
 import { PrismaModule } from "@/prisma/prisma.module";
+import { VaultModule } from "@/vault/vault.module";
 
 @Module({
   imports: [
@@ -21,6 +23,8 @@ import { PrismaModule } from "@/prisma/prisma.module";
     AdminsModule,
     AdminModule,
     AuthModule,
+    MeModule,
+    VaultModule,
   ],
   controllers: [AppController],
   providers: [

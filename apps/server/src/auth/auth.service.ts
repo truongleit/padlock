@@ -45,7 +45,11 @@ export class AuthService implements OnModuleInit {
 
   async register(dto: RegisterDto) {
     await this.prisma.user.create({
-      data: { email: dto.email, ...(await this.keyData(dto)) },
+      data: {
+        email: dto.email,
+        ...(await this.keyData(dto)),
+        settings: { create: {} }, // column defaults
+      },
     });
   }
 
