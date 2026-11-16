@@ -7,9 +7,11 @@ const MODELS = [
   "user",
   "adminAuditLog",
   "vaultItem",
+  "userSettings",
 ] as const;
 const METHODS = [
   "findUnique",
+  "findFirst",
   "findUniqueOrThrow",
   "findMany",
   "count",

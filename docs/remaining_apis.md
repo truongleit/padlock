@@ -1,4 +1,4 @@
-# Remaining APIs
+# End-user API status
 
 Gap between the SRS (`padlock_srs.md`) and DB design (`padlock_database_design.md`) and what the server implements (`swagger.json`), as of 2026-11-16.
 
@@ -29,38 +29,44 @@ FR-1, NFR-SEC-2/9/10/11. All routes are public; the refresh token lives in an HT
 | `POST /auth/reset-password` | Use up the code, store the new auth hash, master wrap and recovery wrap (FR-1.5, 1.6), revoke sessions. |
 | `POST /auth/reset-account` | Same, plus `confirm: true`, and deletes every vault item (FR-1.7). |
 
-Not done yet: default `user_settings` on register (the table doesn't exist), and a user JWT guard (comes with Profile/Vault).
 
-## To implement (end-user API)
+## Implemented (profile, settings, vault)
 
-### Profile (FR-11)
+All need a user access token (`Authorization: Bearer`, `role: "user"`), checked by `UserJwtGuard` via `@UserAuth()` (`apps/server/src/auth/user-auth.decorator.ts`). A disabled or deleted user is rejected on the next request.
 
-| Route | Purpose |
+### Profile (FR-11), `apps/server/src/me/`
+
+| Route | Behaviour |
 | --- | --- |
-| `GET /me` | Profile (email, status, created date). |
-| `PATCH /me/master-password` | Re-wrap only: new auth hash, salt, KDF params and master wrap. Vault items are left alone. |
-| `GET /me/sessions`, `DELETE /me/sessions/:id` | Optional. The DB design mentions letting users revoke sessions per client. |
+| `GET /me` | `id`, `email`, `status`, `createdAt`. |
+| `PATCH /me/master-password` | Body: `currentAuthKey` plus the new `authKey`, `kdfSalt`, `kdfParams`, `wrappedVaultKeyMaster`, `wrapIvMaster`. 403 if `currentAuthKey` is wrong. Re-wrap only: vault items and the recovery wrap are untouched. Revokes every session, including the caller's, so the client logs in again. |
+| `GET /me/sessions` | Active sessions (`id`, `clientType`, `createdAt`, `expiresAt`). |
+| `DELETE /me/sessions/:id` | Revoke one of your sessions. 404 if it isn't yours or is already revoked. |
 
 ### Settings (FR-7, FR-4.4)
 
-| Route | Purpose |
+| Route | Behaviour |
 | --- | --- |
-| `GET /me/settings` | Read `autoLockMinutes`, `clipboardClearSeconds`, `generatorDefaults`. |
-| `PATCH /me/settings` | Update them. |
+| `GET /me/settings` | `autoLockMinutes`, `clipboardClearSeconds`, `generatorDefaults`, `updatedAt`. |
+| `PATCH /me/settings` | Partial update. `autoLockMinutes` 1–60, `clipboardClearSeconds` 5–300, `generatorDefaults` is the whole `{ length (8–64), symbols, numbers }` object. |
 
-### Vault sync (FR-2, encrypted blobs only)
+Settings live in `user_settings` (migration `add_user_settings`, which also backfills existing users). Defaults match the extension: 5 min, 30 s, `{ length: 16, symbols: true, numbers: true }`. Register creates the row.
 
-| Route | Purpose |
+### Vault sync (FR-2), `apps/server/src/vault/`
+
+| Route | Behaviour |
 | --- | --- |
-| `GET /vault/items?since=` | List the user's items. `since` uses `updatedAt` for incremental sync. |
-| `POST /vault/items` | Add an item (`ciphertext`, `iv`, `encVersion`). |
-| `PUT /vault/items/:id` | Replace an item. Reject an IV the item already used. |
-| `DELETE /vault/items/:id` | Delete an item. |
+| `GET /vault/items` | All of the user's items: `id`, `ciphertext`, `iv` (base64), `encVersion`, `createdAt`, `updatedAt`. |
+| `POST /vault/items` | `ciphertext`, `iv`, optional `encVersion` (default 1). Returns the stored item with its server `id`. |
+| `PUT /vault/items/:id` | Replace an item. 400 if `iv` equals the item's current IV. |
+| `DELETE /vault/items/:id` | Delete an item. 404 if it isn't yours. |
+
+Vault routes allow 600 requests/min (the first sync uploads one item per request).
+
+**Changed from the original proposal:** `GET /vault/items` has no `since` parameter. Items are hard-deleted, so an incremental query can't tell the client what was removed. Add `since` together with delete tombstones if vaults get large enough for a full list to matter.
 
 ## Notes
 
-- **`UserSettings` table doesn't exist yet.** The DB design defines it, but `apps/server/prisma/schema.prisma` has no such model, so the settings routes need a migration first.
-- **Users need their own login guard.** `AdminJwtGuard` is global, so end-user routes have to be marked `@Public()` and then guarded by a separate user JWT guard.
 - **No server routes needed** for search, scores, reuse alerts, password age, expiry reminders, the generator, autofill or clipboard. These all run on the client (SRS design decision 4).
 - **Open item from `technical_debt.md`:** no scheduled job cleans up expired sessions and reset tokens (item 2).
-- **Suggested order:** auth and vault sync first, since the extension currently stores its vault locally only.
+- **Next:** wire the extension to these routes. It needs the API host in `host_permissions` and its `chrome-extension://` origin in `ADMIN_EXTRA_ORIGINS`.
