@@ -9,10 +9,11 @@ import { Input } from "@/components/ui/input";
 import { H3 } from "@/components/ui/typography";
 import { GeneratorHeader } from "@/entrypoints/app/pages/GeneratorPage";
 import { INTERVIEW_QUESTIONS, interviewPassword } from "@/lib/generator";
-import { navigate } from "@/lib/router";
+import { useNavigateWithSecret } from "@/lib/router";
 
 /** W-11 (FR-4.2, FR-4.3). Answers stay in component state only (NFR-SEC-12). */
-export function InterviewPage({ path }: { path: string }) {
+export function InterviewPage() {
+  const toNewItem = useNavigateWithSecret();
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState(() =>
     INTERVIEW_QUESTIONS.map(() => "")
@@ -28,7 +29,7 @@ export function InterviewPage({ path }: { path: string }) {
   }
 
   return (
-    <AppLayout className="max-w-[680px]" path={path}>
+    <AppLayout className="max-w-[680px]">
       <GeneratorHeader mode="interview" />
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-2">
@@ -101,7 +102,7 @@ export function InterviewPage({ path }: { path: string }) {
             password={password}
             scoreLabel="Meets the minimum score"
           >
-            <Button onClick={() => navigate("/vault/new", password)}>
+            <Button onClick={() => toNewItem("/vault/new", password)}>
               Use this password
             </Button>
           </PasswordOutput>

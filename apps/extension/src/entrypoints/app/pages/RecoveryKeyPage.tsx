@@ -1,11 +1,12 @@
 import { Copy, Download, Printer } from "lucide-react";
 import { useState } from "react";
+import { Navigate, useNavigate } from "react-router";
 
 import { AuthHeader, AuthLayout } from "@/components/AuthLayout";
 import { Button } from "@/components/ui/button";
 import { Checkbox, hintClass } from "@/components/ui/field";
 import { Note } from "@/components/ui/note";
-import { navigate, routeState, useRedirect } from "@/lib/router";
+import { useSecret } from "@/lib/router";
 import { useCopy } from "@/lib/use-copy";
 
 function download(key: string) {
@@ -19,13 +20,13 @@ function download(key: string) {
   URL.revokeObjectURL(url);
 }
 
-/** W-02. The key arrives through route state only, so a reload never shows it again. */
+/** W-02. The key arrives through useSecret (memory only), so a reload never shows it again. */
 export function RecoveryKeyPage() {
-  const [key] = useState(() => routeState<string>());
+  const key = useSecret<string>();
   const [ack, setAck] = useState(false);
   const copy = useCopy();
-  useRedirect(!key, "/vault");
-  if (!key) return null;
+  const navigate = useNavigate();
+  if (!key) return <Navigate replace to="/vault" />;
 
   return (
     <AuthLayout footNote={false} wide>
@@ -67,7 +68,7 @@ export function RecoveryKeyPage() {
         I have stored my recovery key in a safe place.
       </Checkbox>
       <div className="flex flex-col gap-2">
-        <Button block disabled={!ack} onClick={() => navigate("/vault")}>
+        <Button block disabled={!ack} onClick={() => void navigate("/vault")}>
           Continue to my vault
         </Button>
         {!ack && (

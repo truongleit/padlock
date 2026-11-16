@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router";
 import { toast } from "sonner";
 
 import { AppLayout, BackLink } from "@/components/AppLayout";
@@ -10,19 +11,13 @@ import { H2 } from "@/components/ui/typography";
 import { useVault } from "@/components/VaultProvider";
 import { randomPassword } from "@/lib/generator";
 import { analyze, itemStatus } from "@/lib/health";
-import { navigate } from "@/lib/router";
 import { type Credential, saveCredential } from "@/lib/vault";
 
 const DAY = 86_400_000;
 
 /** W-13: change an expiring password (FR-6.4), keeping the same expiry interval. */
-export function RotatePasswordPage({
-  path,
-  item,
-}: {
-  path: string;
-  item: Credential;
-}) {
+export function RotatePasswordPage({ item }: { item: Credential }) {
+  const navigate = useNavigate();
   const { vaultKey, items, settings } = useVault();
   const gen = () =>
     randomPassword({
@@ -48,12 +43,12 @@ export function RotatePasswordPage({
         : null;
     await saveCredential(vaultKey, { ...item, password, expiresAt }, item);
     toast.success(`Password for ${item.site} changed.`);
-    navigate(`/vault/${item.id}`);
+    void navigate(`/vault/${item.id}`);
   }
 
   return (
-    <AppLayout className="max-w-[840px]" path={path}>
-      <BackLink href={`#/vault/${item.id}`}>Back to credential</BackLink>
+    <AppLayout className="max-w-[840px]">
+      <BackLink to={`/vault/${item.id}`}>Back to credential</BackLink>
       <section
         aria-labelledby="rotate"
         className="border-border mt-4 flex flex-col gap-4 rounded-lg border p-6"

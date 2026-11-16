@@ -1,3 +1,4 @@
+import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Clock,
   Copy,
@@ -6,8 +7,10 @@ import {
   Search,
   Sparkles,
 } from "lucide-react";
-import { type FormEvent, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
 import { toast } from "sonner";
+import type { z } from "zod";
 
 import { Favicon } from "@/components/CredentialRow";
 import { Logo } from "@/components/Logo";
@@ -17,6 +20,7 @@ import { Input, PasswordInput } from "@/components/ui/input";
 import { Note } from "@/components/ui/note";
 import { useVault } from "@/components/VaultProvider";
 import { analyze, daysUntil, formatDays } from "@/lib/health";
+import { unlockSchema } from "@/lib/schemas";
 import { useCopy } from "@/lib/use-copy";
 import { type Credential, lock, unlock } from "@/lib/vault";
 
@@ -98,35 +102,35 @@ function Header() {
 }
 
 function Unlock() {
-  const [pw, setPw] = useState("");
-  const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
+  const {
+    register,
+    handleSubmit,
+    setError,
+    formState: { errors, isSubmitting },
+  } = useForm<z.input<typeof unlockSchema>>({
+    resolver: zodResolver(unlockSchema),
+    defaultValues: { master: "" },
+  });
 
-  async function onSubmit(e: FormEvent) {
-    e.preventDefault();
-    setBusy(true);
-    setError("");
+  const onSubmit = handleSubmit(async ({ master }) => {
     try {
-      await unlock(pw);
+      await unlock(master);
     } catch {
-      setError("Incorrect master password.");
-      setBusy(false);
+      setError("master", { message: "Incorrect master password." });
     }
-  }
+  });
 
   return (
-    <form className="flex flex-col gap-4" onSubmit={onSubmit}>
-      <Field error={error || undefined} label="Master password">
+    <form className="flex flex-col gap-4" noValidate onSubmit={onSubmit}>
+      <Field error={errors.master?.message} label="Master password">
         <PasswordInput
           autoComplete="current-password"
           autoFocus
-          onChange={(e) => setPw(e.target.value)}
-          required
-          value={pw}
+          {...register("master")}
         />
       </Field>
-      <Button block disabled={busy} type="submit">
-        {busy ? "Unlocking…" : "Unlock"}
+      <Button block disabled={isSubmitting} type="submit">
+        {isSubmitting ? "Unlocking…" : "Unlock"}
       </Button>
       <Button
         className="self-center"
@@ -298,9 +302,16 @@ export function App() {
         {status === "none" && (
           <>
             <p className="text-muted-foreground">
-              Create a PadLock account to save and autofill passwords.
+              Log in or create a PadLock account to save and autofill passwords.
             </p>
-            <Button block onClick={() => openApp("/signup")}>
+            <Button block onClick={() => openApp("/login")}>
+              Log in
+            </Button>
+            <Button
+              block
+              onClick={() => openApp("/signup")}
+              variant="secondary"
+            >
               Create account
             </Button>
           </>

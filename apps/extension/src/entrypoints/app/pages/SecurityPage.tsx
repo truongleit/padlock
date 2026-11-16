@@ -1,4 +1,5 @@
 import { Clock, Lock, TriangleAlert } from "lucide-react";
+import { Link } from "react-router";
 
 import { AppLayout } from "@/components/AppLayout";
 import { List } from "@/components/CredentialRow";
@@ -33,11 +34,11 @@ type Rec = {
   bad: boolean;
   title: string;
   body: string;
-  href: string;
+  to: string;
 };
 
 /** W-12 (FR-5). */
-export function SecurityPage({ path }: { path: string }) {
+export function SecurityPage() {
   const { items } = useVault();
   const h = analyze(items);
   const r = rating(h.score);
@@ -47,21 +48,21 @@ export function SecurityPage({ path }: { path: string }) {
       bad: true,
       title: "Reused password",
       body: `${g.map((i) => i.site).join(" and ")} share one password.`,
-      href: `#/vault/${g[0]!.id}/edit`,
+      to: `/vault/${g[0]!.id}/edit`,
     })),
     ...h.weak.map((i) => ({
       key: `w-${i.id}`,
       bad: true,
       title: "Weak password",
       body: `${i.site} scores ${score(i.password)}. Use at least 12 characters.`,
-      href: `#/vault/${i.id}/edit`,
+      to: `/vault/${i.id}/edit`,
     })),
     ...h.old.map((i) => ({
       key: `o-${i.id}`,
       bad: false,
       title: "Old password",
       body: `${i.site} was last changed ${formatAge(monthsSince(i.passwordChangedAt))} ago.`,
-      href: `#/vault/${i.id}/edit`,
+      to: `/vault/${i.id}/edit`,
     })),
     ...h.expiring.map((i) => {
       const d = daysUntil(i.expiresAt!);
@@ -73,13 +74,13 @@ export function SecurityPage({ path }: { path: string }) {
           d < 0
             ? `${i.site} has expired.`
             : `${i.site} expires in ${formatDays(d)}.`,
-        href: `#/vault/${i.id}/rotate`,
+        to: `/vault/${i.id}/rotate`,
       };
     }),
   ];
 
   return (
-    <AppLayout className="max-w-[880px]" path={path}>
+    <AppLayout className="max-w-[880px]">
       <PageHead
         description="How healthy the passwords in your vault are."
         title="Security"
@@ -178,7 +179,7 @@ export function SecurityPage({ path }: { path: string }) {
                   </div>
                 </div>
                 <Button asChild size="sm" variant="secondary">
-                  <a href={rec.href}>Change</a>
+                  <Link to={rec.to}>Change</Link>
                 </Button>
               </div>
             ))}

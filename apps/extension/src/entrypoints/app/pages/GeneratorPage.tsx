@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router";
 
 import { AppLayout } from "@/components/AppLayout";
 import { PasswordOutput } from "@/components/PasswordOutput";
@@ -12,16 +13,17 @@ import {
   hasCharset,
   randomPassword,
 } from "@/lib/generator";
-import { navigate } from "@/lib/router";
+import { useNavigateWithSecret } from "@/lib/router";
 
 export function GeneratorHeader({ mode }: { mode: "random" | "interview" }) {
+  const navigate = useNavigate();
   return (
     <div className="mb-7 flex flex-col gap-4">
       <H1>Password generator</H1>
       <Segmented
         label="Generator type"
         onValueChange={(v) =>
-          navigate(v === "random" ? "/generator" : "/generator/interview")
+          void navigate(v === "random" ? "/generator" : "/generator/interview")
         }
         options={[
           { value: "random", label: "Random" },
@@ -42,7 +44,8 @@ const CHECKS: [keyof GeneratorOptions, string][] = [
 ];
 
 /** W-10 (FR-4.1, FR-4.4). */
-export function GeneratorPage({ path }: { path: string }) {
+export function GeneratorPage() {
+  const toNewItem = useNavigateWithSecret();
   const { settings } = useVault();
   const [opts, setOpts] = useState<GeneratorOptions>(() => ({
     ...settings.generatorDefaults,
@@ -60,14 +63,14 @@ export function GeneratorPage({ path }: { path: string }) {
   }
 
   return (
-    <AppLayout className="max-w-[680px]" path={path}>
+    <AppLayout className="max-w-[680px]">
       <GeneratorHeader mode="random" />
       <div className="flex flex-col gap-5">
         <PasswordOutput
           onRegenerate={() => setPassword(randomPassword(opts))}
           password={password}
         >
-          <Button onClick={() => navigate("/vault/new", password)}>
+          <Button onClick={() => toNewItem("/vault/new", password)}>
             Use this password
           </Button>
         </PasswordOutput>

@@ -1,5 +1,6 @@
 import { Copy, ExternalLink, Eye, EyeOff, Pencil, Trash2 } from "lucide-react";
 import { type ReactNode, useState } from "react";
+import { Link, useNavigate } from "react-router";
 import { toast } from "sonner";
 
 import { AppLayout, BackLink } from "@/components/AppLayout";
@@ -26,7 +27,6 @@ import {
   formatDays,
   monthsSince,
 } from "@/lib/health";
-import { navigate } from "@/lib/router";
 import { LEVEL_LABELS, level, score } from "@/lib/strength";
 import { useCopy } from "@/lib/use-copy";
 import { type Credential, deleteCredential } from "@/lib/vault";
@@ -67,13 +67,8 @@ function Stat({ label, children }: { label: string; children: ReactNode }) {
 const TONE = ["error", "error", "warning", "success", "success"] as const;
 
 /** W-09. */
-export function CredentialDetailPage({
-  path,
-  item,
-}: {
-  path: string;
-  item: Credential;
-}) {
+export function CredentialDetailPage({ item }: { item: Credential }) {
+  const navigate = useNavigate();
   const { items } = useVault();
   const [show, setShow] = useState(false);
   const copy = useCopy();
@@ -86,13 +81,13 @@ export function CredentialDetailPage({
   async function onDelete() {
     await deleteCredential(item.id);
     toast.success(`${item.site} deleted.`);
-    navigate("/vault");
+    void navigate("/vault");
   }
 
   return (
-    <AppLayout className="max-w-[760px]" path={path}>
+    <AppLayout className="max-w-[760px]">
       <div className="mb-6 flex flex-col gap-4">
-        <BackLink href="#/vault">Back to vault</BackLink>
+        <BackLink to="/vault">Back to vault</BackLink>
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex min-w-0 items-center gap-4">
             <Favicon large name={item.site} />
@@ -105,10 +100,10 @@ export function CredentialDetailPage({
           </div>
           <div className="flex gap-2">
             <Button asChild size="sm" variant="secondary">
-              <a href={`#/vault/${item.id}/edit`}>
+              <Link to={`/vault/${item.id}/edit`}>
                 <Pencil aria-hidden />
                 Edit
-              </a>
+              </Link>
             </Button>
             <Dialog>
               <DialogTrigger asChild>
@@ -234,9 +229,9 @@ export function CredentialDetailPage({
                 {formatDate(item.expiresAt)}
                 {days <= 14 && (
                   <Button asChild size="sm" variant="link">
-                    <a href={`#/vault/${item.id}/rotate`}>
+                    <Link to={`/vault/${item.id}/rotate`}>
                       {days < 0 ? "Expired" : `In ${formatDays(days)}`} · Change
-                    </a>
+                    </Link>
                   </Button>
                 )}
               </>

@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import {
   createAccount,
+  DEFAULT_KDF,
   decryptItem,
+  deriveMaster,
   encryptItem,
   unwrapWithMaster,
   unwrapWithRecovery,
@@ -33,12 +35,36 @@ describe("vault crypto", () => {
 
   it("re-wraps for a new master password without changing the vault key", async () => {
     const { vaultKey, keys } = await createAccount("old-password-123");
-    const rewrapped = await wrapMaster(vaultKey, "new-password-456");
+    const { wrap: rewrapped } = await wrapMaster(vaultKey, "new-password-456");
 
     expect(rewrapped.kdfSalt).not.toBe(keys.kdfSalt);
     expect(await unwrapWithMaster(rewrapped, "new-password-456")).toEqual(
       vaultKey
     );
+  });
+
+  it("derives a stable auth key that differs per password", async () => {
+    const { authKey, keys } = await createAccount("auth-password-123");
+    const again = await deriveMaster(
+      "auth-password-123",
+      keys.kdfSalt,
+      keys.kdfParams
+    );
+    const other = await deriveMaster(
+      "other-password-123",
+      keys.kdfSalt,
+      keys.kdfParams
+    );
+
+    expect(again.authKey).toBe(authKey);
+    expect(other.authKey).not.toBe(authKey);
+    expect(atob(authKey)).toHaveLength(32);
+  });
+
+  it("refuses weakened KDF parameters", async () => {
+    await expect(
+      deriveMaster("pw", "AAAA", { ...DEFAULT_KDF, iterations: 1 })
+    ).rejects.toThrow("Unsupported KDF parameters");
   });
 
   it("round-trips an item with a fresh IV per write", async () => {

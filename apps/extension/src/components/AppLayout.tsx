@@ -5,6 +5,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import type { ReactNode } from "react";
+import { Link, NavLink } from "react-router";
 
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
@@ -20,29 +21,27 @@ const NAV = [
 
 /** Top bar + centred page column for unlocked screens. */
 export function AppLayout({
-  path,
   className,
   children,
 }: {
-  path: string;
   className?: string;
   children: ReactNode;
 }) {
   return (
     <div className="min-h-screen">
       <header className="border-border bg-surface flex min-h-[68px] flex-wrap items-center gap-x-7 gap-y-2 border-b px-8 py-2.5">
-        <Logo href="#/vault" />
+        <Logo to="/vault" />
         <nav aria-label="Main" className="flex flex-1 flex-wrap gap-1">
           {NAV.map(({ to, label, Icon }) => (
-            <a
-              aria-current={path.startsWith(to) ? "page" : undefined}
+            // NavLink sets aria-current="page" on this route and its children.
+            <NavLink
               className="hover:bg-muted aria-[current=page]:bg-primary-50 aria-[current=page]:text-primary-700 inline-flex min-h-11 items-center gap-2 rounded px-3.5 font-medium text-neutral-600 no-underline hover:text-neutral-900 aria-[current=page]:font-semibold"
-              href={`#${to}`}
               key={to}
+              to={to}
             >
               <Icon aria-hidden className="size-[18px]" />
               {label}
-            </a>
+            </NavLink>
           ))}
         </nav>
         <Button onClick={() => lock()} size="sm" variant="secondary">
@@ -63,16 +62,16 @@ export function AppLayout({
 }
 
 export function BackLink({
-  href,
+  to,
   children,
 }: {
-  href: string;
+  to: string;
   children: ReactNode;
 }) {
   return (
-    <a
+    <Link
       className="text-primary-700 hover:text-primary-800 inline-flex min-h-8 items-center gap-1.5 self-start text-[13px] font-semibold no-underline"
-      href={href}
+      to={to}
     >
       <svg
         aria-hidden
@@ -82,6 +81,6 @@ export function BackLink({
         <path d="M19 12H5M11 6l-6 6 6 6" />
       </svg>
       {children}
-    </a>
+    </Link>
   );
 }

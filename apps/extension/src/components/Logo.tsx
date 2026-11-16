@@ -1,3 +1,5 @@
+import { Link } from "react-router";
+
 import { cn } from "@/lib/utils";
 
 const brand =
@@ -24,19 +26,14 @@ function Mark() {
   );
 }
 
-export function Logo({
-  href,
-  className,
-}: {
-  href?: string;
-  className?: string;
-}) {
-  if (href)
+/** `to` renders a router link, so only pass it inside the app's router (not the popup). */
+export function Logo({ to, className }: { to?: string; className?: string }) {
+  if (to)
     return (
-      <a className={cn(brand, className)} href={href}>
+      <Link className={cn(brand, className)} to={to}>
         <Mark />
         PadLock
-      </a>
+      </Link>
     );
   return (
     <span className={cn(brand, className)}>

@@ -1,5 +1,9 @@
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Trash2 } from "lucide-react";
-import { type FormEvent, useState } from "react";
+import { useState } from "react";
+import { FormProvider, useForm } from "react-hook-form";
+import { toast } from "sonner";
+import type { z } from "zod";
 
 import { AuthHeader, AuthLayout } from "@/components/AuthLayout";
 import { NewMasterFields } from "@/components/NewMasterFields";
@@ -19,30 +23,44 @@ import { Input } from "@/components/ui/input";
 import { Note } from "@/components/ui/note";
 import { Stepper } from "@/components/ui/stepper";
 import { RESET_STEPS } from "@/entrypoints/app/pages/ForgotPasswordPage";
-import { navigate } from "@/lib/router";
+import { useNavigateWithSecret } from "@/lib/router";
+import { resetPasswordSchema } from "@/lib/schemas";
 import { masterReady } from "@/lib/strength";
 import { resetAccount, resetWithRecovery } from "@/lib/vault";
 
 /** W-05, with the W-06 account-reset dialog. */
 export function ResetPasswordPage() {
-  const [recoveryKey, setRecoveryKey] = useState("");
-  const [pw, setPw] = useState("");
-  const [confirm, setConfirm] = useState("");
-  const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
+  const toRecoveryKey = useNavigateWithSecret();
+  const form = useForm<z.input<typeof resetPasswordSchema>>({
+    resolver: zodResolver(resetPasswordSchema),
+    mode: "onTouched",
+    defaultValues: { recoveryKey: "", master: "", confirm: "" },
+  });
+  const {
+    register,
+    handleSubmit,
+    setError,
+    watch,
+    formState: { errors, isSubmitting, isValid },
+  } = form;
+  const [pw, confirm] = watch(["master", "confirm"]);
   const ready = masterReady(pw, confirm);
 
-  async function onSubmit(e: FormEvent) {
-    e.preventDefault();
-    setBusy(true);
-    setError("");
+  const onSubmit = handleSubmit(async ({ recoveryKey, master }) => {
     try {
-      navigate("/recovery-key", await resetWithRecovery(recoveryKey, pw));
-    } catch {
-      setError("That recovery key doesn't unlock this vault.");
-      setBusy(false);
+      toRecoveryKey(
+        "/recovery-key",
+        await resetWithRecovery(recoveryKey, master)
+      );
+    } catch (e) {
+      setError("recoveryKey", {
+        message:
+          e instanceof Error
+            ? e.message
+            : "That recovery key doesn't unlock this vault.",
+      });
     }
-  }
+  });
 
   return (
     <AuthLayout footNote={false} wide>
@@ -51,34 +69,28 @@ export function ResetPasswordPage() {
         Enter your recovery key and choose a new master password. Your saved
         credentials stay intact.
       </AuthHeader>
-      <form className="flex flex-col gap-5" onSubmit={onSubmit}>
-        <Field error={error || undefined} label="Recovery key">
-          <Input
-            autoComplete="off"
-            className="font-mono text-[13px]"
-            onChange={(e) => setRecoveryKey(e.target.value)}
-            placeholder="XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX"
-            required
-            spellCheck={false}
-            value={recoveryKey}
-          />
-        </Field>
-        <NewMasterFields
-          confirm={confirm}
-          label="New master password"
-          onChange={setPw}
-          onConfirmChange={setConfirm}
-          value={pw}
-        />
-        <div className="flex flex-col gap-2">
-          <Button block disabled={!ready || busy} type="submit">
-            {busy ? "Resetting…" : "Reset password and unlock"}
-          </Button>
-          <p className={hintClass}>
-            A new recovery key will be shown next. The old one stops working.
-          </p>
-        </div>
-      </form>
+      <FormProvider {...form}>
+        <form className="flex flex-col gap-5" noValidate onSubmit={onSubmit}>
+          <Field error={errors.recoveryKey?.message} label="Recovery key">
+            <Input
+              autoComplete="off"
+              className="font-mono text-[13px]"
+              placeholder="XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX"
+              spellCheck={false}
+              {...register("recoveryKey")}
+            />
+          </Field>
+          <NewMasterFields label="New master password" />
+          <div className="flex flex-col gap-2">
+            <Button block disabled={!isValid || isSubmitting} type="submit">
+              {isSubmitting ? "Resetting…" : "Reset password and unlock"}
+            </Button>
+            <p className={hintClass}>
+              A new recovery key will be shown next. The old one stops working.
+            </p>
+          </div>
+        </form>
+      </FormProvider>
       <Note tone="error">
         <div className="flex flex-col gap-3">
           <p>
@@ -93,13 +105,19 @@ export function ResetPasswordPage() {
 }
 
 function ResetAccountDialog({ master }: { master: string | null }) {
+  const toRecoveryKey = useNavigateWithSecret();
   const [typed, setTyped] = useState("");
   const [busy, setBusy] = useState(false);
 
   async function onConfirm() {
     if (!master) return;
     setBusy(true);
-    navigate("/recovery-key", await resetAccount(master));
+    try {
+      toRecoveryKey("/recovery-key", await resetAccount(master));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Reset failed.");
+      setBusy(false);
+    }
   }
 
   return (

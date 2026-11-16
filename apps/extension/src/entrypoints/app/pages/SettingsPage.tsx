@@ -1,6 +1,9 @@
+import { zodResolver } from "@hookform/resolvers/zod";
 import { KeyRound } from "lucide-react";
-import { type FormEvent, type ReactNode, useState } from "react";
+import { type ReactNode, useState } from "react";
+import { FormProvider, useForm } from "react-hook-form";
 import { toast } from "sonner";
+import type { z } from "zod";
 
 import { AppLayout } from "@/components/AppLayout";
 import { NewMasterFields } from "@/components/NewMasterFields";
@@ -20,8 +23,9 @@ import { Note } from "@/components/ui/note";
 import { Switch } from "@/components/ui/switch";
 import { H3, PageHead } from "@/components/ui/typography";
 import { useVault } from "@/components/VaultProvider";
-import { masterReady } from "@/lib/strength";
-import { changeMaster, lock, type Settings, saveSettings } from "@/lib/vault";
+import { errorText } from "@/lib/api";
+import { changeMasterSchema } from "@/lib/schemas";
+import { changeMaster, logout, type Settings, saveSettings } from "@/lib/vault";
 
 function Section({
   title,
@@ -71,7 +75,7 @@ function SetRow({
 }
 
 /** W-14, with the W-15 change-master dialog. */
-export function SettingsPage({ path }: { path: string }) {
+export function SettingsPage() {
   const { account, settings } = useVault();
   const [form, setForm] = useState<Settings>(settings);
   const gen = form.generatorDefaults;
@@ -84,7 +88,7 @@ export function SettingsPage({ path }: { path: string }) {
   }
 
   return (
-    <AppLayout className="max-w-[880px]" path={path}>
+    <AppLayout className="max-w-[880px]">
       <PageHead
         description="Preferences for this PadLock account."
         title="Account & settings"
@@ -190,7 +194,7 @@ export function SettingsPage({ path }: { path: string }) {
       </Section>
       <div className="border-border flex flex-wrap gap-3 border-t pt-6">
         <Button onClick={onSave}>Save settings</Button>
-        <Button onClick={() => lock()} variant="secondary">
+        <Button onClick={() => logout()} variant="secondary">
           Log out
         </Button>
       </div>
@@ -200,34 +204,35 @@ export function SettingsPage({ path }: { path: string }) {
 
 function ChangeMasterDialog() {
   const [open, setOpen] = useState(false);
-  const [current, setCurrent] = useState("");
-  const [pw, setPw] = useState("");
-  const [confirm, setConfirm] = useState("");
-  const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
+  const form = useForm<z.input<typeof changeMasterSchema>>({
+    resolver: zodResolver(changeMasterSchema),
+    mode: "onTouched",
+    defaultValues: { current: "", master: "", confirm: "" },
+  });
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setError,
+    formState: { errors, isSubmitting, isValid },
+  } = form;
 
   function onOpenChange(next: boolean) {
     setOpen(next);
-    setCurrent("");
-    setPw("");
-    setConfirm("");
-    setError("");
+    reset();
   }
 
-  async function onSubmit(e: FormEvent) {
-    e.preventDefault();
-    setBusy(true);
-    setError("");
+  const onSubmit = handleSubmit(async ({ current, master }) => {
     try {
-      await changeMaster(current, pw);
+      await changeMaster(current, master);
       onOpenChange(false);
       toast.success("Master password changed.");
-    } catch {
-      setError("Incorrect master password.");
-    } finally {
-      setBusy(false);
+    } catch (e) {
+      setError("current", {
+        message: errorText(e, "Incorrect master password."),
+      });
     }
-  }
+  });
 
   return (
     <Dialog onOpenChange={onOpenChange} open={open}>
@@ -236,50 +241,48 @@ function ChangeMasterDialog() {
           Change master password
         </Button>
       </DialogTrigger>
-      <DialogContent
-        aria-describedby={undefined}
-        asChild
-        className="max-w-[480px]"
-      >
-        <form onSubmit={onSubmit}>
-          <div className="flex items-center gap-3">
-            <DialogIcon>
-              <KeyRound />
-            </DialogIcon>
-            <DialogTitle>Change master password</DialogTitle>
-          </div>
-          <Field error={error || undefined} label="Current master password">
-            <Input
-              autoComplete="current-password"
-              onChange={(e) => setCurrent(e.target.value)}
-              required
-              type="password"
-              value={current}
-            />
-          </Field>
-          <NewMasterFields
-            confirm={confirm}
-            label="New master password"
-            onChange={setPw}
-            onConfirmChange={setConfirm}
-            value={pw}
-          />
-          <Note tone="info">
-            <p>
-              Your saved credentials stay intact. Your recovery key does not
-              change.
-            </p>
-          </Note>
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button variant="secondary">Cancel</Button>
-            </DialogClose>
-            <Button disabled={!masterReady(pw, confirm) || busy} type="submit">
-              {busy ? "Changing…" : "Change password"}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
+      {/* Outside DialogContent: its asChild Slot needs the <form> as direct child. */}
+      <FormProvider {...form}>
+        <DialogContent
+          aria-describedby={undefined}
+          asChild
+          className="max-w-[480px]"
+        >
+          <form noValidate onSubmit={onSubmit}>
+            <div className="flex items-center gap-3">
+              <DialogIcon>
+                <KeyRound />
+              </DialogIcon>
+              <DialogTitle>Change master password</DialogTitle>
+            </div>
+            <Field
+              error={errors.current?.message}
+              label="Current master password"
+            >
+              <Input
+                autoComplete="current-password"
+                type="password"
+                {...register("current")}
+              />
+            </Field>
+            <NewMasterFields label="New master password" />
+            <Note tone="info">
+              <p>
+                Your saved credentials stay intact. Your recovery key does not
+                change.
+              </p>
+            </Note>
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button variant="secondary">Cancel</Button>
+              </DialogClose>
+              <Button disabled={!isValid || isSubmitting} type="submit">
+                {isSubmitting ? "Changing…" : "Change password"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </FormProvider>
     </Dialog>
   );
 }

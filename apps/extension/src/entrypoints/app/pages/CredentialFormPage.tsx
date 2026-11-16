@@ -1,5 +1,6 @@
 import { Sparkles } from "lucide-react";
 import { type FormEvent, useState } from "react";
+import { Link, useNavigate } from "react-router";
 
 import { AppLayout, BackLink } from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
@@ -9,7 +10,7 @@ import { Meter } from "@/components/ui/meter";
 import { H1 } from "@/components/ui/typography";
 import { useVault } from "@/components/VaultProvider";
 import { randomPassword } from "@/lib/generator";
-import { navigate, routeState } from "@/lib/router";
+import { useSecret } from "@/lib/router";
 import { LEVEL_LABELS, level, score } from "@/lib/strength";
 import {
   type Credential,
@@ -22,20 +23,16 @@ const optional = (
 );
 
 /** W-08: add, or edit when `existing` is set. */
-export function CredentialFormPage({
-  path,
-  existing,
-}: {
-  path: string;
-  existing?: Credential;
-}) {
+export function CredentialFormPage({ existing }: { existing?: Credential }) {
+  const navigate = useNavigate();
+  // "Use this password" from the generator hands the password over in memory.
+  const generated = useSecret<string>();
   const { vaultKey, settings } = useVault();
   const [form, setForm] = useState<CredentialInput>(() => ({
     site: existing?.site ?? "",
     url: existing?.url ?? "",
     username: existing?.username ?? "",
-    // "Use this password" from the generator hands the password over in route state.
-    password: existing?.password ?? routeState<string>() ?? "",
+    password: existing?.password ?? generated ?? "",
     notes: existing?.notes ?? "",
     expiresAt: existing?.expiresAt ?? null,
   }));
@@ -43,20 +40,20 @@ export function CredentialFormPage({
   const set = (patch: Partial<CredentialInput>) =>
     setForm({ ...form, ...patch });
   const s = score(form.password);
-  const back = existing ? `#/vault/${existing.id}` : "#/vault";
+  const back = existing ? `/vault/${existing.id}` : "/vault";
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     if (!vaultKey) return;
     setBusy(true);
     const id = await saveCredential(vaultKey, form, existing);
-    navigate(`/vault/${id}`);
+    void navigate(`/vault/${id}`);
   }
 
   return (
-    <AppLayout className="max-w-[680px]" path={path}>
+    <AppLayout className="max-w-[680px]">
       <div className="mb-7 flex flex-col gap-3">
-        <BackLink href={back}>
+        <BackLink to={back}>
           {existing ? "Back to credential" : "Back to vault"}
         </BackLink>
         <H1>{existing ? "Edit credential" : "Add credential"}</H1>
@@ -142,7 +139,7 @@ export function CredentialFormPage({
         </p>
         <div className="border-border flex justify-end gap-3 border-t pt-3">
           <Button asChild variant="secondary">
-            <a href={back}>Cancel</a>
+            <Link to={back}>Cancel</Link>
           </Button>
           <Button disabled={busy} type="submit">
             Save credential
