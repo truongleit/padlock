@@ -1,6 +1,7 @@
 import { Sparkles } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router";
+import { toast } from "sonner";
 
 import { AppLayout, BackLink } from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,7 @@ import { Input, PasswordInput, Textarea } from "@/components/ui/input";
 import { Meter } from "@/components/ui/meter";
 import { H1 } from "@/components/ui/typography";
 import { useVault } from "@/components/VaultProvider";
+import { errorText } from "@/lib/api";
 import { randomPassword } from "@/lib/generator";
 import { useSecret } from "@/lib/router";
 import { LEVEL_LABELS, level, score } from "@/lib/strength";
@@ -46,8 +48,13 @@ export function CredentialFormPage({ existing }: { existing?: Credential }) {
     e.preventDefault();
     if (!vaultKey) return;
     setBusy(true);
-    const id = await saveCredential(vaultKey, form, existing);
-    void navigate(`/vault/${id}`);
+    try {
+      const id = await saveCredential(vaultKey, form, existing);
+      void navigate(`/vault/${id}`);
+    } catch (e) {
+      toast.error(errorText(e, "Couldn't save. Try again."));
+      setBusy(false);
+    }
   }
 
   return (
