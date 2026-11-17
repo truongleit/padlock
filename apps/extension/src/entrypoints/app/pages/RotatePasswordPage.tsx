@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { hintClass } from "@/components/ui/field";
 import { H2 } from "@/components/ui/typography";
 import { useVault } from "@/components/VaultProvider";
+import { errorText } from "@/lib/api";
 import { randomPassword } from "@/lib/generator";
 import { analyze, itemStatus } from "@/lib/health";
 import { type Credential, saveCredential } from "@/lib/vault";
@@ -41,7 +42,13 @@ export function RotatePasswordPage({ item }: { item: Credential }) {
             .toISOString()
             .slice(0, 10)
         : null;
-    await saveCredential(vaultKey, { ...item, password, expiresAt }, item);
+    try {
+      await saveCredential(vaultKey, { ...item, password, expiresAt }, item);
+    } catch (e) {
+      toast.error(errorText(e, "Couldn't save. Try again."));
+      setBusy(false);
+      return;
+    }
     toast.success(`Password for ${item.site} changed.`);
     void navigate(`/vault/${item.id}`);
   }

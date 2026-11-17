@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { H1, H3 } from "@/components/ui/typography";
 import { useVault } from "@/components/VaultProvider";
+import { errorText } from "@/lib/api";
 import {
   analyze,
   daysUntil,
@@ -79,7 +80,12 @@ export function CredentialDetailPage({ item }: { item: Credential }) {
   const days = item.expiresAt ? daysUntil(item.expiresAt) : null;
 
   async function onDelete() {
-    await deleteCredential(item.id);
+    try {
+      await deleteCredential(item.id);
+    } catch (e) {
+      toast.error(errorText(e, "Couldn't delete. Try again."));
+      return;
+    }
     toast.success(`${item.site} deleted.`);
     void navigate("/vault");
   }
